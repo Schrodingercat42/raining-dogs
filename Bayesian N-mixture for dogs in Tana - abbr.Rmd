@@ -1,0 +1,704 @@
+---
+title: "Bayesian dog population estimate in Tana"
+author: "Kat"
+date: "2025-08-11"
+output: html_document
+---
+
+
+```{r}
+# Load packages
+library(tidyverse)
+library(jagsUI)
+library(rjags)
+library(coda)
+library(MASS)
+library(loo)
+library(ggplot2)
+library(dclone)
+```
+
+## Data prepping
+
+- recycle the count matrix created in frequentist analysis
+- add the covariates as standardized vectors  (this is said to be a good practice to speed up the convergence, if the covariates are in very different units, convergence can take a lot of time)
+- for categorical covariates, JAGS cannot handle them as factors, they need to be coded numerically as dummy variables
+```{r}
+
+obs <- read.csv("obs_matrix.csv")[, 2:6]
+sitecovs <- read.csv("Site covariates 21 fkt.csv")
+obscovs <- read.csv("Observation covariates 21 fkt.csv")
+
+Y <- as.matrix(obs)
+n_sites <- nrow(Y)
+n_visits <- ncol(Y)
+
+#Standardization of numerical covariates
+standardize <- function(x) (x - mean(x)) / sd(x)
+
+area <- standardize(sitecovs$Real.area.covered)
+length <- standardize(sitecovs$length)
+
+# Adaptation of categorical variable seclasse; "moyen" will be held up as baseline
+seclasse <- factor(sitecovs$Seclasse)
+sc_pauvre <- ifelse(seclasse == "Pauvre", 1, 0)
+sc_riche  <- ifelse(seclasse == "Riche", 1, 0)
+
+abundance_index <- as.numeric(sitecovs$abundance_index)
+detection_index <- as.numeric(obscovs$detection_index)
+```
+
+#### Function for joint likelihood, recommended for N-mixture models (took from Gaya and Ketz, 2024). Will be used later, for model selection. 
+```{r}
+calc.jointlike <- function(samples) {
+  # Combine chains
+  loglike_mat <- do.call(rbind, lapply(samples, function(chain) {
+    as.matrix(chain)[, grep("loglike_new", colnames(chain)), drop=FALSE]
+  }))
+  # Each column = site, so sum across sites for each iteration
+  joint_loglike <- rowSums(loglike_mat)
+  fbar <- mean(exp(joint_loglike))      # mean joint likelihood
+  Pw <- var(joint_loglike)              # variance in joint log-likelihood
+  WAIC_joint <- -2 * log(fbar) + 2 * Pw
+  return(WAIC_joint)
+}
+
+```
+
+
+## Formulating N-mixture hierarchical model using negative binomial distribution for abundance and binomial model for detection. 
+
+Alphas are regression coefficients in the abundance model (site covariates that influence expected abundance at each site via log-linear model);
+ - area ; the overall site area covered by the counting
+ - length ; the length of the "transect"
+ - seclasse (socioeconomic class) ; pauve/moyen/riche
+ - abundance index; weighted sum of proportions of areas of different urban structure, about which we assume that it influences the real numbers of the dogs
+ 
+Betas are regression coefficients in the detection model (observation covariates that influence the detection probability on a logit scale);
+ - seclasse
+ - detection index; weighted sum of proportions of areas of different urban structure, about which we assume that it influences the visibility of the dogs (condensed houses versus ricefields...)
+ 
+Mu will be the mean abundance on site; it is stored as N_pred among the parameters to be monitored;
+N will be the true (latent) abundance at site - it is drawn from NB distribution parametrized by probability and size, both of which are related to overdispersion parameter;
+p is usually the visit-specific detection probability, modeled by betas (observation covariates); however, in our case, we dont have visit-specific variables, so obscovs are only site-specific
+
+The observation model is binomial parametrized by p (probability of detecting each individual at a given visit) and N (latent abundance)
+
+So:
+Negative Binomial generates the true but unknown N[i] and then Binomial models the observed counts Y[i,j], given N and imperfect detection
+
+
+
+
+
+
+## Model 7; basic
+- detection probability is constrained between 0.4 and 0.99 (this is informed by secondary data -similar studies- and another model, where i tested a subset of sites, only those that are not over-dispersed - 9 sites - and detection came out as 0.4 - 0.5)
+
+- the abundance prior s constrained so that we expect anywhere between 10 and 300 dogs per site per day (the lowest count ever was 11, the highest 200)
+
+- random effect per site
+
+
+```{r}
+log(0.4 / (1-0.4)) #lower bound: logit 0.4 is -0.405
+log(0.99 / (1- 0.99)) # upper bound: logit 0.99 is 4.595
+
+(- 0.405 + 4.595) / 2  # mean is 2.095
+(4.595 + 0.405) / (2*1.96) # SD is 1.275
+1/(1.275*1.275) # precision is 0.62
+
+```
+- the structure of the model will remain as the model before, but for simplicity, we will start with no detection covariates (intercept only)
+
+
+#### Data list for JAGS
+```{r}
+jags_data7 <- list(
+  Y = Y,
+  n_sites = n_sites,
+  n_visits = n_visits,
+  length_var = length,
+  sc_pauvre = sc_pauvre,
+  sc_riche = sc_riche
+  )
+
+```
+
+
+#### Model for JAGS
+```{r}
+n_mix_nb_model7 <- "
+model {
+  # Priors for abundance model
+  alpha0 ~ dnorm(4, 1.33)
+  alpha2 ~ dnorm(0, 0.001)
+  tau_site ~ dgamma(0.01, 0.01)
+
+  # Priors for detection model
+  beta0 ~ dnorm(2.1, 0.61)
+  beta1 ~ dnorm(0, 0.001)
+  beta2 ~ dnorm(0, 0.001)
+  
+  # Hyperpriors for overdispersion 
+  a ~ dgamma(1, 0.1)
+  b ~ dgamma(1, 0.1)
+
+  for (i in 1:n_sites) {
+    # Site random effect
+    site_eff[i] ~ dnorm(0, tau_site)
+    
+    # Abundance model
+    log_mu[i] <- alpha0 + alpha2 * length_var[i] + site_eff[i]
+    mu[i] <- exp(log_mu[i])
+    r[i] ~ dgamma(a, b)
+    prob[i] <- r[i] / (r[i] + mu[i])
+    N[i] ~ dnegbin(prob[i], r[i])
+    N_pred[i] <- mu[i]
+    
+    # Detection model
+      logit(p[i]) <- beta0 + beta1 * sc_pauvre[i] + beta2 * sc_riche[i]
+      
+      for (j in 1:n_visits) {
+      Y[i, j] ~ dbin(p[i], N[i])
+    }
+  }
+}
+"
+
+```
+
+
+#### Initial values and parameters to monitor
+
+```{r}
+inits7 <- function() {
+  p_init <- runif(1, 0.6, 0.99)
+  list(
+    alpha0 = runif(1, 2.3, 5.7),
+    alpha2 = rnorm(1, 0, 0.01),
+    beta0 = log(p_init / (1 - p_init)),
+    a = rgamma(1, 1, 0.1),
+    b = rgamma(1, 1, 0.1),
+    r = rgamma(n_sites, 1, 1),
+    N = apply(Y, 1, max) + 1
+  )
+}
+params7 <- c("alpha0", "alpha2", "beta0", "beta1", "beta2", "a","b", "r", "N", "N_pred")
+
+```
+
+#### Parameters for the MCMC sampling
+
+```{r}
+# Write model to a temporary file
+writeLines(n_mix_nb_model7, "n_mix_nb_model7.txt")
+
+# Run JAGS
+set.seed(123)
+jags_model7 <- jags.model(file = "n_mix_nb_model7.txt",
+            data = jags_data7,
+            inits = inits7,
+            n.chains = 3)
+
+```
+
+#### Burnin and sample from posteriors
+
+```{r}
+# Burn-in
+update(jags_model7, n.iter = 100000)
+
+# Sample from the posterior
+samples7 <- coda.samples(model = jags_model7,
+                        variable.names = params7,
+                        n.iter = 900000,
+                        n.chains = 3)
+```
+
+
+#### Traceplots
+```{r}
+traceplot(samples7[, "alpha0"]) #intercept
+traceplot(samples7[, "alpha2"]) #length
+traceplot(samples7[, "beta0"]) # intercept detection
+traceplot(samples7[, "beta1"]) #se pauvre
+traceplot(samples7[, "beta2"]) # se riche
+traceplot(samples7[, grep("^r\\[", varnames(samples7))])  #overdispersion per site
+```
+```{r}
+traceplot(samples7[, grep("^N\\[", varnames(samples7))])
+traceplot(samples7[, grep("^N_pred\\[", varnames(samples7))])
+```
+#### Check convergence: 
+```{r}
+gelman.diag(samples7 [, c("alpha0", "alpha2")])
+gelman.diag(samples7 [, c("beta0", "beta1", "beta2")])
+autocorr.diag(samples7 [, c("alpha0", "alpha2", "beta0", "beta1", "beta2")])
+autocorr.diag(samples7[, grep("^r\\[", varnames(samples7))]) 
+autocorr.diag(samples7[, grep("^N\\[", varnames(samples7))]) 
+autocorr.diag(samples7[, grep("^N_pred\\[", varnames(samples7))]) 
+autocorr.plot(samples7 [, "alpha2"])
+autocorr.plot(samples7 [, "alpha0"])
+autocorr.plot(samples7 [, "beta0"])
+autocorr.plot(samples7 [, "beta1"])
+autocorr.plot(samples7 [, "beta2"])
+effectiveSize(samples7 [, c("alpha0", "alpha2", "beta0", "beta1", "beta2")])
+
+```
+
+```{r}
+summary(samples7)
+```
+
+
+
+#### Examining detection probability
+```{r}
+# Convert coda object to matrix
+post7 <- as.matrix(samples7)
+
+# Extract detection parameter samples
+beta0 <- post7[, "beta0"]
+beta1 <- post7[, "beta1"]
+beta2 <- post7[, "beta2"]
+
+n_sites <- length(sc_pauvre)
+n_iter <- nrow(post7)
+p_site <- matrix(NA, nrow = n_iter, ncol = n_sites)
+
+for (i in 1:n_sites) {
+  # Linear predictor for each MCMC sample
+  lin_pred <- beta0 + beta1 * sc_pauvre[i] + beta2 * sc_riche[i]
+  # Transform to probability
+  p_site[, i] <- 1 / (1 + exp(-lin_pred))
+}
+
+# Compute mean and 95% CI for each site
+p_mean7 <- apply(p_site, 2, mean)
+p_lower7 <- apply(p_site, 2, quantile, 0.025)
+p_upper7 <- apply(p_site, 2, quantile, 0.975)
+
+# Plot
+plot7 <- data.frame(
+  site = 1:n_sites,
+  mean = p_mean7,
+  lower = p_lower7,
+  upper = p_upper7
+)
+
+ggplot(plot7, aes(x = site, y = mean)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2) +
+  labs(
+    x = "Site",
+    y = "Detection probability (mean, 95% CI)",
+    title = "Posterior detection probability per site"
+  ) +
+  theme_minimal()
+```
+
+
+#### Prior predictive check for alpha0
+```{r}
+set.seed(1)
+alpha0_samples7 <- rnorm(1000, mean = 4, sd = sqrt(1/1.33)) 
+
+# Simulate mean abundance per site (mu)
+mu7 <- exp(alpha0_samples7)
+
+# Plot
+hist(mu7, breaks = 50, main = "Prior predictive: mean abundance (mu) per site", xlab = "mu")
+abline(v = quantile(mu7, c(0.025, 0.5, 0.975)), col = c("red", "blue", "red"), lty = 2)
+```
+
+#### Prior predictive check for beta0
+```{r}
+set.seed(1)
+beta0_samples7 <- rnorm(1000, mean = 2.1, sd = 0.61)
+p7 <- plogis(beta0_samples7)
+
+hist(p7, breaks = 50, main = "Prior predictive: detection probability per visit", xlab = "p")
+```
+
+
+
+```{r}
+# Example values
+n_visits7 <- 5
+n_sites7 <- 10
+
+# Simulate for each site (could add more priors for covariates, random effects, etc.)
+sim_counts7 <- matrix(NA, nrow = 1000, ncol = n_sites7)
+
+for (i in 1:1000) {
+  # For each site, draw an alpha0 and beta0 sample
+  mu_i <- exp(alpha0_samples7[i])
+  N_i <- rpois(1, mu_i) # or rnbinom(1, size=..., mu=mu_i) for NB
+  
+  p_i <- plogis(beta0_samples7[i])
+  
+  # Simulate observed counts at one site over n_visits
+  sim_counts7[i, ] <- rbinom(n_visits7, size = N_i, prob = p_i)
+}
+
+# Visualize simulated count distribution
+boxplot(sim_counts7, main = "Simulated counts under priors", ylab = "Count")
+```
+
+#### Correlation between abundance and detection
+```{r}
+cor(post7[, "alpha0"], post7[, "beta0"])
+```
+Strong negative correlation - indicates identifiability issue. 
+
+
+## Model 13 ; Finite mixtue N-mixtue 
+- restricting detection probability to 0.6 and above at all cases
+logit(p) > logit(0.6) ≈ 0.405
+Actually, we suppose that the detection should be lower in pauvre (more dense urban structures, lower visibility). But it can also be otherwise (in rich neighbourhoods, there are more open spaces, dogs might by hiding away). So we restrict the priors of beta1 and beta2 in  a sense that they both can be positive or negative, but not so negative that the overall detection probability would drop below 0.6. 
+
+- overdispersion parameter in the abundance model is modeled per latent class, to account for the fact that counts in some sites are overdispersed and in others not 
+
+
+#### Data list for JAGS
+```{r}
+K <- 3 # dont ask me why
+
+jags_data13 <- list(
+  Y = Y,
+  n_sites = n_sites,
+  n_visits = n_visits,
+  length_var = length,
+  sc_pauvre = sc_pauvre,
+  sc_riche = sc_riche,
+  K = K,
+  alpha = rep (1,K)
+)
+```
+
+
+#### Model for JAGS
+```{r}
+n_mix_nb_model13 <- "
+model {
+  # Mixture weights/prior
+  pi[1:K] ~ ddirich(alpha[1:K])   # Dirichlet prior for class assignment
+
+  for(k in 1:K) {                      
+    alpha0_k[k] ~ dnorm(4, 1.33)         # Class-specific abundance intercept
+    alpha2_k[k] ~ dnorm(0, 1)T(0, )      # Class-specific slope
+    a_k[k] ~ dgamma(1, 0.1)               # hyperparameters for class-specific overdispersion
+    b_k[k] ~ dgamma(1, 0.1)
+    r_k[k] ~ dgamma(a_k[k], b_k[k])      # Class-level overdispersion 
+  }
+
+  # Detection model (shared across classes)
+  beta0 ~ dnorm(2.5, 0.87)T(0.405, )    #even when the covariates are zero, the intercept will always be 0.6 and above 
+  beta1 ~ dnorm(0, 0.001)T(0.405-beta0, ) # can go negative but no so negative that the overall detection would go below 0.6
+  beta2 ~ dnorm(0, 0.001)T(0.405-beta0, )
+
+  for (i in 1:n_sites) {
+    class[i] ~ dcat(pi[])                # Assign site i to class 1..K (discrete categorical distribution corresponding to Dirichlet)
+    log_mu[i] <- alpha0_k[class[i]] + alpha2_k[class[i]] * length_var[i]
+    mu[i] <- exp(log_mu[i])
+    prob[i] <- r_k[class[i]] / (r_k[class[i]] + mu[i])   # negative binomial probability parametrization
+    N[i] ~ dnegbin(prob[i], r_k[class[i]])                # negbin is defined by class-specific overdispersion
+    N_pred[i] <- mu[i]
+    
+    log_N[i] <- logdensity.negbin(N[i], prob[i], r_k[class[i]])
+   
+    # Detection model and loglik for WAIC
+    for (j in 1:n_visits) {
+      logit(p[i, j]) <- beta0 + beta1 * sc_pauvre[i] + beta2 * sc_riche[i]
+      Y[i, j] ~ dbin(p[i, j], N[i])
+      loglike_waic[i, j] <- logdensity.bin(Y[i, j], p[i, j], N[i])
+    }
+    loglike_new[i] <- sum(loglike_waic[i, ]) + log_N[i]
+  }
+}
+"
+```
+
+#### Initial values and parameters to monitor
+
+```{r}
+
+inits13 <- function() {
+  beta0_init <- runif(1, 0.6, 2)
+  list(
+    alpha0_k = rnorm(K, 4, 0.5),
+    alpha2_k = abs(rnorm(K, 0.5, 0.2) +0.01), 
+    a_k = rgamma(K, 2, 2),
+    b_k = rgamma(K, 2, 2),                 
+    beta0 = beta0_init,
+    beta1 = runif(1, 0.405 - beta0_init, 1),
+    beta2 = runif(1, 0.405 - beta0_init, 1),
+    N = apply(Y, 1, max) + 1  
+    )
+}
+
+params13 <- c("alpha0_k", "alpha2_k", "beta0", "beta1", "beta2", "r_k", "a_k", "b_k", "N", "N_pred", "loglike_new")
+
+```
+
+
+#### Parameters for the MCMC sampling
+
+```{r}
+# Write model to a temporary file
+writeLines(n_mix_nb_model13, "n_mix_nb_model13.txt")
+
+# Run JAGS
+set.seed(123)
+jags_model13 <- jags.model(file = "n_mix_nb_model13.txt",
+            data = jags_data13,
+            inits = inits13,
+            n.chains = 3)
+
+```
+
+
+#### Burnin and sample from posteriors
+
+```{r}
+# Burn-in
+update(jags_model13, n.iter = 100000)
+
+# Sample from the posterior
+samples13 <- coda.samples(model = jags_model13,
+                        variable.names = params13,
+                        n.iter = 900000,
+                        n.chains = 3)
+```
+
+#### Traceplots
+```{r}
+
+traceplot(samples13[, "alpha0_k[1]"])
+traceplot(samples13[, "alpha0_k[2]"])
+traceplot(samples13[, "alpha0_k[3]"])
+traceplot(samples13[, "beta0"]) 
+traceplot(samples13[, "beta1"]) 
+traceplot(samples13[, "beta2"]) 
+```
+
+
+```{r}
+
+traceplot(samples13 [, grep("^N\\[", varnames(samples12), value = TRUE)])
+traceplot(samples13 [, grep("^N_pred\\[", varnames(samples12), value = TRUE)])
+
+traceplot(samples13[, "r_k[1]"])
+traceplot(samples13[, "r_k[2]"])
+traceplot(samples13[, "r_k[3]"])
+
+traceplot(samples13[, "a_k[1]"])
+traceplot(samples13[, "a_k[2]"])
+traceplot(samples13[, "a_k[3]"])
+
+traceplot(samples13[, "b_k[1]"])
+traceplot(samples13[, "b_k[2]"])
+traceplot(samples13[, "b_k[3]"])
+
+```
+
+
+#### Check convergence for the basic parameters: 
+```{r}
+
+gelman.diag(samples13 [, "alpha0_k[1]"])
+gelman.diag(samples13 [, "alpha0_k[2]"])
+gelman.diag(samples13 [, "alpha0_k[3]"])
+
+gelman.diag(samples13 [, c("beta0", "beta1", "beta2")])
+
+gelman.diag(samples13[, "r_k[1]"])
+gelman.diag(samples13[, "r_k[2]"])
+gelman.diag(samples13[, "r_k[3]"])
+
+gelman.diag(samples13[, "a_k[1]"])
+gelman.diag(samples13[, "a_k[2]"])
+gelman.diag(samples13[, "a_k[3]"])
+
+gelman.diag(samples13[, "b_k[1]"])
+gelman.diag(samples13[, "b_k[2]"])
+gelman.diag(samples13[, "b_k[3]"])
+
+gelman.diag(samples13 [, grep("^N\\[", varnames(samples13), value = TRUE)])
+gelman.diag(samples13 [, grep("^N_pred\\[", varnames(samples13), value = TRUE)])
+
+```
+
+
+```{r}
+summary(samples13)
+```
+
+
+#### Prediction 13
+```{r}
+prediction_bay13 <- summary(samples13)
+
+print (c(
+  "sum21fkt_moy" = sum(prediction_bay13$statistics[grep("^N_pred", rownames(prediction_bay13$statistics)), "Mean"]),
+  "sum21fkt_min" = sum(prediction_bay13$quantiles[grep("^N_pred", rownames(prediction_bay13$quantiles)), "2.5%"]),
+  "sum21fkt_max" = sum(prediction_bay13$quantiles[grep("^N_pred", rownames(prediction_bay13$quantiles)), "97.5%"])))
+```
+
+```{r}
+print(c(
+  "detection moyen"  = plogis(prediction_bay13$statistics["beta0", "Mean"]),
+  "detection pauvre" = plogis(prediction_bay13$statistics["beta0", "Mean"] + prediction_bay13$statistics["beta1", "Mean"]),
+  "detection riche"  = plogis(prediction_bay13$statistics["beta0", "Mean"] + prediction_bay13$statistics["beta2", "Mean"])
+))
+```
+
+
+#### WAICj
+```{r}
+calc.jointlike(samples13)
+```
+
+
+
+
+## Model 20 ;  using urban structure as covariate
+- using abundance index and detection index as site and obs covariates, respectively
+
+#### Data list for JAGS
+```{r}
+jags_data20 <- list(
+  Y = Y,
+  n_sites = n_sites,
+  n_visits = n_visits,
+  length_var = length,
+  detection_index = detection_index,
+  abundance_index = abundance_index
+)
+```
+
+#### Model for JAGS
+```{r}
+n_mix_nb_model20 <- "
+model {
+  # Abundance
+  alpha0 ~ dnorm(4, 1.33)       # abundance intercept 
+  alpha2 ~ dnorm(0, 1)          # slope for length_var
+  alpha3 ~ dnorm(0, 1)          # slope for abundance_index
+  r      ~ dgamma(1, 0.1)       # overdispersion (NB size)
+
+  # Detection model (site-level detection_index)
+  beta0 ~ dnorm(0, 4)T(-0.8472979, 4.59511985)
+  beta3 ~ dnorm(0, 0.001)
+
+  for (i in 1:n_sites) {
+    log_mu[i] <- alpha0 + alpha2 * length_var[i] + alpha3 * abundance_index[i]
+    mu[i] <- exp(log_mu[i])
+
+    prob[i] <- r / (r + mu[i])           
+    N[i] ~ dnegbin(prob[i], r)
+    N_pred[i] <- mu[i]
+    log_N[i] <- logdensity.negbin(N[i], prob[i], r)
+
+    for (j in 1:n_visits) {
+      logit(p[i,j]) <- beta0 + beta3 * detection_index[i]
+      Y[i,j] ~ dbin(p[i,j], N[i])
+      loglike_waic[i,j] <- logdensity.bin(Y[i,j], p[i,j], N[i])
+    }
+    loglike_new[i] <- sum(loglike_waic[i, 1:n_visits]) + log_N[i]
+  }
+}
+
+"
+```
+
+#### Initial values and parameters to monitor
+
+```{r}
+inits20 <- function() {
+  list(
+    alpha0 = rnorm (1,0,1),
+    alpha2 = rnorm(1,0,1),
+    r = 1,
+    alpha3 = rnorm(1,0,0.1),
+    beta0 = rnorm(1, 0, 0.5),             
+    beta3 = rnorm(1, 0, 0.1),              
+    N = apply(Y, 1, max) + 1  
+    )
+}
+
+params20 <- c("alpha0", "alpha2", "beta0", "beta3", "r", "N", "N_pred", "loglike_new")
+```
+
+
+#### Parameters for the MCMC sampling
+
+```{r}
+# Write model to a temporary file
+writeLines(n_mix_nb_model20, "n_mix_nb_model20.txt")
+
+# Run JAGS
+set.seed(123)
+jags_model20 <- jags.model(file = "n_mix_nb_model20.txt",
+            data = jags_data20,
+            inits = inits20,
+            n.chains = 3)
+```
+
+#### Burnin and sample from posteriors
+
+```{r}
+# Burn-in
+update(jags_model20, n.iter = 100000)
+
+# Sample from the posterior
+samples20 <- coda.samples(model = jags_model20,
+                        variable.names = params20,
+                        n.iter = 500000,
+                        n.chains = 3)
+```
+
+#### Traceplots
+```{r}
+
+traceplot(samples20[, "alpha0"])
+traceplot(samples20[, "alpha2"])
+traceplot(samples20[, "alpha3"])
+traceplot(samples20[, "beta0"]) 
+traceplot(samples20[, "beta3"])
+
+traceplot(samples20 [, grep("^N\\[", varnames(samples20), value = TRUE)])
+traceplot(samples20 [, grep("^N_pred\\[", varnames(samples20), value = TRUE)])
+traceplot(samples20 [, "r"])
+```
+
+#### Check convergence
+```{r}
+
+gelman.diag(samples20 [, "alpha0"])
+gelman.diag(samples20 [, "beta0"])
+gelman.diag(samples20 [, "r"])
+
+gelman.diag(samples20 [, grep("^N\\[", varnames(samples20), value = TRUE)])
+gelman.diag(samples20 [, grep("^N_pred\\[", varnames(samples20), value = TRUE)])
+```
+
+```{r}
+prediction_bay20 <- summary(samples20)
+
+print (c(
+  "sum21fkt_moy" = sum(prediction_bay20$statistics[grep("^N_pred", rownames(prediction_bay20$statistics)), "Mean"]),
+  "sum21fkt_min" = sum(prediction_bay20$quantiles[grep("^N_pred", rownames(prediction_bay20$quantiles)), "2.5%"]),
+  "sum21fkt_max" = sum(prediction_bay20$quantiles[grep("^N_pred", rownames(prediction_bay20$quantiles)), "97.5%"])))
+```
+
+```{r}
+print(c("detection moyen"  = plogis(prediction_bay20$statistics["beta0", "Mean"])))
+```
+
+
+#### WAICj
+```{r}
+calc.jointlike(samples20)
+```
