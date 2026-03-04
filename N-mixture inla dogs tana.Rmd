@@ -1,0 +1,560 @@
+---
+title: "N-mixture inla dogs tana clean"
+author: "Katerina"
+date: "2026-02-27"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(pls)
+library(lme4)
+library("INLA") 
+library("ggplot2")
+```
+
+
+#Load and adapt raw data
+this is tedious, but necessary, because we did not have "site name" question in the quesitonnaire... we then sort out the lines according to dates and teams, since we know which team worked where in which dates. 
+```{r}
+com <- read.csv("Comptage_chien_errant_-21 fkt copy.csv")
+summary(com)
+
+com <- com %>%
+    mutate(
+    date = as.Date(`Date.Created`, format = "%d/%m/%Y"),
+    fkt = case_when(
+      date >= as.Date("2024-06-28") & date <= as.Date("2024-07-04") ~ "Andraisoro",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe 1"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe2"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe3"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe4"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe5"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe6"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe7"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe8"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe9"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe10"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Ambohimiandra"  ~ "Ambohimiandra",
+      
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe2"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe3"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe4"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe5"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe6"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe7"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe8"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe9"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe 1"  ~ "Ambohimanandray",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe10"  ~ "Ambohimanandray",
+      
+      date >= as.Date("2024-07-19") & date <= as.Date("2024-07-25")  ~ "Analamahitsy",
+      
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe5"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe7"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe8"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe2"  ~ "Ambodivona",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe4"  ~ "Ambodivona",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe 1"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe3"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe6"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe9"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe10"  ~ "Anjanahary",
+      
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe5" ~ "Isotry-Antetezana",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe7" ~ "Isotry-Antetezana",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe2"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe3"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe4"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe 1"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe6"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe8"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe9"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe10"  ~ "Mahamasina",
+      
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe6"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe5"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe7"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe4"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe9"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe10"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe 1"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe2"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe3"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe8"  ~ "Ankazatoho",
+
+      date >= as.Date("2024-08-19") & date <= as.Date("2024-08-23")  ~ "Ankerana",
+      
+      date >= as.Date("2024-08-26") & date <= as.Date("2024-08-30")  ~ "Soavimasoandro",
+      
+      date >= as.Date("2024-10-10") & date <= as.Date("2024-10-16") ~ "Ampandrana",
+      date >= as.Date("2024-10-17") & date <= as.Date("2024-10-31") ~ "Ambatomaro",
+                  TRUE ~ NA
+    )
+  )
+View(com)
+```
+
+
+# Load data; fokontany= site and a little bit of tidying up
+
+```{r}
+comp <- read_csv("obs_matrix_and_covs.csv") %>%
+  rename(site_id = `...1`) %>%
+  mutate(
+    length_traj = as.numeric(scale(length)),
+    ppc = as.numeric(scale(`PCC total`)),
+    se_classe = recode(as.character(Seclasse),
+                       "Riche" = 5,
+                       "Moyen" = 3,
+                       "Pauvre" = 1) %>% as.numeric()  %>% scale() %>% as.numeric(),
+    pop_dens = as.numeric (scale(population / `Administrative area`)),
+    mean_count = rowMeans(across(2:6), na.rm = TRUE),
+    dog_dens = mean_count / `Real area covered`*1000000,   #dog per kmsq
+    dog_dens_s = as.numeric(scale(dog_dens)),
+    p_water_s = as.numeric(scale(p_water)),
+    p_ricefield_s = as.numeric(scale(p_ricefield)),
+    p_sparse_urb_s = as.numeric(scale(p_sparse_urb)), 
+    p_compact_ur_s = as.numeric(scale(p_compact_ur)),
+    p_industrial_s = as.numeric(scale(p_industrial))
+  )
+
+```
+
+## Partial least squares to create one vector out of the 5 types of urban fabric
+```{r}
+comp_pls <- comp %>%
+  transmute(
+    dog_dens = as.numeric(dog_dens),  # i am wondering how different proportions of urban fabric types influence overall dog density 
+    p_water    = as.numeric(p_water),
+    p_ricefield= as.numeric(p_ricefield),
+    p_sparse_urb = as.numeric(p_sparse_urb),
+    p_compact_ur = as.numeric(p_compact_ur),
+    p_industrial  = as.numeric(p_industrial))
+  
+  
+summary(comp_pls)
+
+pls_site <- plsr(
+  dog_dens ~ .,
+  data = comp_pls,
+  ncomp = 1,
+  scale = TRUE)
+
+terms(pls_site)
+
+summary(pls_site)
+
+comp$urban_fabric <- scores(pls_site)[,1] #integrating it into the sitecov table
+comp$dog_dens_r <- round(comp$dog_dens)
+
+loadings(pls_site)[,1]
+
+comp_long <- comp %>%   pivot_longer(cols = `1`:`5`,
+               names_to = "replicate",
+               values_to = "count")
+
+View(comp_long)
+View(comp)
+
+
+y_matrix <- as.matrix(comp[2:6])  # taking out matrix of counts at fokontany level
+```
+
+
+## some GLM to see what matters
+
+```{r}
+nb_model_counts <- glmer.nb(count ~ length_traj + pop_dens + ppc + urban_fabric + (1 | site_id), data = comp_long)
+summary(nb_model_counts)
+```
+(Tried also Poiss-glmer and Poiss-glm, but NB-glmer has the lowest AIC)
+
+```{r}
+nb_model_density <- glmer.nb(dog_dens_r ~ pop_dens + ppc + urban_fabric + (1 | site_id), data = comp)
+summary(nb_model_density)
+```
+
+Length of the trajectory and population density are important, ppc and urban fabric less so. (but i will use them anyway, it took a lot of work to create them!)
+
+
+# INLA models
+
+Note: INLA does not handle survey-level covariates for detection probability (the detection is supposed to be constant or averaged to a single value per site, not changing per visit) this is good for our situation, because we don't assume the detection probability fo be changing from one visit to another
+Inla.mdata object bundles the counts and the covariates for the abundance part. It does not contain detection covariates.
+Count vector has to be passed as a matrix.
+Detection covariates are on the right side of the tilde in the first argument of inla; the syntax is as lm. 
+The '1' represents the global intercept for abundance. "1" is the standard, used by Meehan et al., somehow it seems important to do it like this, but i forgot why (i guess, if we pass 0, the model would be fit without an intercept)
+
+
+
+## Model fkt 1
+
+```{r}
+
+counts_mdata1 <- inla.mdata(
+  y_matrix,
+  1,                                # abundance intercept
+  comp$length_traj,               # abundance covariate 1
+  comp$pop_dens,                  # abundance covariate 2
+  comp$urban_fabric               # abundance covariate 3
+)
+
+data_list1 <- list(
+  counts_mdata1 = counts_mdata1,
+  urban_fabric_det = comp$urban_fabric   # detection covariate
+)
+
+model_1 <- inla(
+  counts_mdata1 ~ 1 + urban_fabric_det,   # detection covariate
+  data = data_list1,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 0.4, prec.intercept = 5),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(
+        prior = "gaussian",
+        param = c(3.9, 0.2)),
+      theta2 = list(
+        prior = "gaussian",
+        param = c(0.5, 10)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_1)
+
+print(model_1$ok)
+
+inla.nmix.lambda.fitted(model_1)
+
+inla.nmix.lambda.fitted(model_1)$fitted.summary %>% pull(mean.lambda) %>% sum()
+plogis(model_1$summary.fixed["(Intercept)","mean"])
+
+model_1$cpo$cpo
+model_1$cpo$pit
+
+hist(model_1$cpo$pit, breaks = 10)
+```
+
+
+### function to get results the heck out of iid models (no helper function included in the package)
+written completely by AI, but seem to work...
+
+```{r}
+get_site_statistics <- function(inla_model, abund_x1, abund_x2, abund_x3, det_x1, n_samples = 5000) {
+  
+  # 1. PREPARATION
+  # Ensure all inputs are numeric vectors to prevent array errors
+  n_sites <- length(abund_x1)
+  abund_x1 <- as.numeric(abund_x1)
+  abund_x2 <- as.numeric(abund_x2)
+  abund_x3 <- as.numeric(abund_x3)
+  det_x1 <- as.numeric(det_x1)
+  
+  # 2. ABUNDANCE CALCULATION (Lambda and SD)
+  # Draw samples from the hyperparameter posterior for uncertainty [10, 11]
+  samples <- inla.hyperpar.sample(n_samples, inla_model)
+  s_names <- colnames(samples)
+  
+  # Extract indices for beta[3] (Intercept) through beta[4] (third covariate)
+  idx_b <- c(grep("beta\\[1\\]", s_names), grep("beta\\[2\\]", s_names), 
+             grep("beta\\[3\\]", s_names), grep("beta\\[4\\]", s_names))
+  
+  # Build a design matrix for abundance: [n_sites x 4]
+  design_matrix <- cbind(1, abund_x1, abund_x2, abund_x3)
+  
+  # Extract beta samples: [4 x n_samples]
+  beta_matrix <- t(samples[, idx_b])
+  
+  # Calculate Lambda Matrix: [n_sites x n_samples]
+  # log_lambda = b1 + b2*X1 + b3*X2 + b4*X3 [12, 13]
+  lambda_matrix <- exp(design_matrix %*% beta_matrix)
+  
+  # Compute site-level mean and standard deviation from the samples [14]
+  site_lambda <- apply(lambda_matrix, 1, mean)
+  site_lambda_sd <- apply(lambda_matrix, 1, sd)
+  
+  # 3. DETECTION CALCULATION (Probability p)
+  # Detection fixed effects are alpha coefficients [1, 2]
+  alpha0 <- inla_model$summary.fixed$mean[3] # Detection Intercept
+  alpha1 <- inla_model$summary.fixed$mean[4] # Detection Slope (det_x1)
+  
+  # Include IID deviations (modify detection in R-INLA N-mixture) [8, 9]
+  # We assume the random effect is named 'site_id'
+   if ("site_id" %in% names(inla_model$summary.random)) {
+    site_deviations <- inla_model$summary.random$site_id$mean
+  } else {
+    # Fallback if the random effect has a different name
+    site_deviations <- rep(0, n_sites)
+    warning("Random effect 'site_id' not found. Using 0 for deviations.")
+  }
+  
+  # Back-transform using plogis (inverse-logit) [16, 17]
+  site_p <- plogis(alpha0 + (alpha1 * det_x1) + site_deviations)
+  
+  # 4. COMBINE AND RETURN RESULTS
+  results <- data.frame(
+    Site_ID = 1:n_sites,
+    Projected_Lambda = round(site_lambda, 2),
+    Lambda_SD = round(site_lambda_sd, 2),
+    Detection_P = round(site_p, 3)
+  )
+  
+  return(results)
+}
+```
+
+
+## Model fkt 3, random effects per site; seems to too complicated
+```{r}
+counts_mdata3 <- inla.mdata(
+  y_matrix,
+  1,
+  comp$length_traj)
+
+data_list3 <- list(
+  counts_mdata3 = counts_mdata3,
+  site_id = 1:nrow(y_matrix))
+
+model_3 <- inla(
+  counts_mdata3 ~ 1 + + f(site_id, model = "iid",
+      hyper = list(
+        prec = list(prior="gaussian", param=c(5,1))
+      )),
+  data = data_list3,
+  family = "nmix",
+  control.fixed = list(
+    mean.intercept = 0.4,
+    prec.intercept = 5),
+  control.family = list(
+    hyper = list(
+      theta2 = list(   # detection probability
+        prior = "gaussian",
+        param = c(0.5, 1)  ) ) ),
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, config = TRUE, return.marginals.predictor = TRUE))
+
+summary(model_3)
+
+print(model_3$ok)
+
+plogis(model_3$summary.fixed["1","mean"])
+
+(sum(log(model_3$cpo$cpo))) / length(y_matrix)
+
+```
+
+```{r}
+get_site_statistics(inla_model = model_3, abund_x1 = comp$length_traj, abund_x2 = NULL, abund_x3 = NULL, det_x1 = comp$urban_fabric, n_samples = 5000)
+```
+
+
+
+# Loading data site = transect
+```{r}
+#getting rid of all the noise and arranging so that umf can be prepared
+com_clean_transect <- com %>% 
+  mutate (
+    n = nombre.de.chien,
+    transect = paste(fkt, UserName), 
+    date = as.Date(date, format = "%d/%m/%Y")) %>%
+  select(date, n, fkt, transect) %>% 
+  arrange(date, transect) %>%
+  filter(!is.na(fkt)) 
+
+head(com_clean_transect)
+unique(com_clean_transect$transect)
+
+
+#there are still some little bugs (=3 dogs, we will just remove this)
+com_clean_transect <- com_clean_transect %>%
+  filter(!transect %in% c("Ambohimiandra Ambohimiandra", "Andraisoro Andraisoro")) 
+
+
+#sum per day per transect
+sum_transect_day <-com_clean_transect %>%
+  group_by(fkt, transect, date) %>%
+  summarise(sum_transect = sum(n, na.rm = TRUE)) %>% 
+  as.data.frame()
+
+#join the length
+Length_transects <- read_csv("Length transects.csv") %>%
+  transmute(
+    length_t = as.integer(length),
+    length_s = scale(length_t),
+    transect = transect)
+sum_transect_day <- left_join(Length_transects, sum_transect_day, by = "transect")
+
+#joining the other variables at fokontany level; population density, soc. class and ppc (all already scaled in comp)
+comp_basic <- comp %>% select(fkt, pop_dens, se_classe, ppc) %>% as.data.frame ()
+sitecovs_transect <- left_join(sum_transect_day, comp_basic, by = "fkt") %>% 
+  select(length_t, length_s, transect, pop_dens, se_classe, ppc) %>% 
+  group_by(transect) %>%
+  summarise(
+    length_t   = first(length_t), 
+    length_s = first(length_s),
+    pop_dens = first(pop_dens),             
+    se_classe = first(se_classe),
+    ppc      = first(ppc),                        
+    .groups = "drop")
+print(sitecovs_transect)
+```
+
+
+Creating the count matrix
+```{r}
+comp_transect <- sum_transect_day %>%
+  group_by(transect) %>%
+  mutate(visit = row_number()) %>%
+  ungroup() %>%
+  select(transect, visit, sum_transect) %>%
+  pivot_wider(names_from = visit,
+              values_from = sum_transect,
+              names_prefix = "visit_",
+              values_fill = NA) %>%
+  arrange(transect) %>% select(2:6) 
+
+Y_transect <- as.matrix(comp_transect)
+
+print(Y_transect)
+min(Y_transect)
+max(Y_transect)
+```
+
+
+## Model transect 8
+```{r}
+counts_mdata8 <- inla.mdata(
+  Y_transect,
+  1,                              
+  sitecovs_transect$length_s,               
+  sitecovs_transect$pop_dens,                  
+  sitecovs_transect$ppc               
+)
+
+data_list8 <- list(
+  counts_mdata8 = counts_mdata8)
+
+model_8 <- inla(
+  counts_mdata8 ~ 1,   
+  data = data_list8,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 2, prec.intercept = 1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(
+        prior = "gaussian",
+        param = c(0, 1)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_8)
+
+print(model_8$ok)
+
+inla.nmix.lambda.fitted(model_8)
+
+inla.nmix.lambda.fitted(model_8)$fitted.summary %>% pull(mean.lambda) %>% sum() #sum per all sites
+plogis(model_8$summary.fixed["(Intercept)","mean"]) #average detection probability
+
+(sum(log(model_8$cpo$cpo))) / length(Y_transect)   #PLML
+
+hist(model_8$cpo$pit, breaks = 10) #i dont know if this one is useful with N-mixtures...
+```
+
+
+## Model transect 9
+```{r}
+
+counts_mdata9 <- inla.mdata(
+  Y_transect,
+  1,                              
+  sitecovs_transect$pop_dens,                  
+  sitecovs_transect$ppc)
+
+data_list9 <- list(
+  counts_mdata9 = counts_mdata9,
+  length_t = sitecovs_transect$length_t)
+
+model_9 <- inla(
+  counts_mdata9 ~ 1 + offset(log(length_t)),   
+  data = data_list9,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 2, prec.intercept = 1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(
+        prior = "gaussian",
+        param = c(0, 1)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_9)
+
+print(model_9$ok)
+
+inla.nmix.lambda.fitted(model_9)
+
+inla.nmix.lambda.fitted(model_9)$fitted.summary %>% pull(mean.lambda) %>% sum()
+plogis(model_9$summary.hyperpar[1, "mean"])
+
+(sum(log(model_9$cpo$cpo))) / length(Y_transect)
+
+hist(model_9$cpo$pit, breaks = 10)
+```
+
+
+## Model fkt 10 offset
+```{r}
+
+counts_mdata10 <- inla.mdata(
+  y_matrix,
+  1,                                
+  comp$pop_dens,                  
+  comp$urban_fabric               
+)
+
+data_list10 <- list(
+  counts_mdata10 = counts_mdata10,
+  urban_fabric_det = comp$urban_fabric,
+  length_traj = comp$length_traj  
+)
+
+model_10 <- inla(
+  counts_mdata10 ~ 1 + urban_fabric_det + offset(log(length_traj)),
+  data = data_list10,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4, prec.intercept = 3),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="gaussian", param=c(0.405, 2.8)))),
+  
+  control.compute = list(cpo=TRUE, dic=TRUE, waic=TRUE, return.marginals.predictor=TRUE, config=TRUE)
+)
+
+summary(model_10)
+
+print(model_10$ok)
+
+inla.nmix.lambda.fitted(model_10)
+
+inla.nmix.lambda.fitted(model_10)$fitted.summary %>% pull(mean.lambda) %>% sum()
+plogis(model_10$summary.fixed["(Intercept)","mean"])
+
+(sum(log(model_10$cpo$cpo))) / length(y_matrix)
+
+
+```
+
+
