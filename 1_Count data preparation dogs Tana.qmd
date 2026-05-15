@@ -1,0 +1,234 @@
+---
+title: "Data preparation - Dog population estimate in Tana"
+author: "Katerina"
+format: html
+editor: visual
+---
+
+```         
+```
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+
+```
+
+## Data import and adaptation
+
+Import of the raw database downloaded from WVS server, creation of a new variable "fokontany" (sampled polygons), according to the team and dates worked
+
+Note: two pairs of small neighboring fokontany were assessed as one polygon, this is the case of;
+
+Faravohitra-Analakely = Faravohitra Mandrosoa and Soarano Ambondrona Ambodifilao
+
+Isotry-Antetezana = Antetezanafovoany II and Cite Ambodin'Isotry
+
+Thus we have 19 polygons /counting sites which represent 21 administrative units.
+
+```{r}
+com <- read.csv("DogCountDataRaw.csv")
+summary(com)
+
+com <- com %>%
+    mutate(
+    date = as.Date(`Date.Created`, format = "%d/%m/%Y"),
+    fkt = case_when(
+      date >= as.Date("2024-06-28") & date <= as.Date("2024-07-04") ~ "Andraisoro",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe01"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe02"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe03"  ~ "Mandroseza",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe04"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe05"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe06"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe07"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe08"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe09"  ~ "Ambohimiandra",
+      date >= as.Date("2024-07-05") & date <= as.Date("2024-07-11") & UserName == "Equipe10"  ~ "Ambohimiandra",
+      
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe02"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe03"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe04"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe05"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe06"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe07"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe08"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe09"  ~ "Ambodimita",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe01"  ~ "Ambohimanandray",
+      date >= as.Date("2024-07-12") & date <= as.Date("2024-07-18") & UserName == "Equipe10"  ~ "Ambohimanandray",
+      
+      date >= as.Date("2024-07-19") & date <= as.Date("2024-07-25")  ~ "Analamahitsy",
+      
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe05"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe07"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe08"  ~ "Andraharo",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe02"  ~ "Ambodivona",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe04"  ~ "Ambodivona",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe01"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe03"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe06"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe09"  ~ "Anjanahary",
+      date >= as.Date("2024-07-26") & date <= as.Date("2024-08-01") & UserName == "Equipe10"  ~ "Anjanahary",
+      
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe05" ~ "Isotry-Antetezana",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe07" ~ "Isotry-Antetezana",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe02"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe03"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe04"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe01"  ~ "Faravohitra-Analakely",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe06"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe08"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe09"  ~ "Mahamasina",
+      date >= as.Date("2024-08-02") & date <= as.Date("2024-08-08") & UserName == "Equipe10"  ~ "Mahamasina",
+      
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe06"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe05"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe07"  ~ "Andavamamba",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe04"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe09"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe10"  ~ "Anosipatrana",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe01"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe02"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe03"  ~ "Ankazatoho",
+      date >= as.Date("2024-08-09") & date <= as.Date("2024-08-16") & UserName == "Equipe08"  ~ "Ankazatoho",
+
+      date >= as.Date("2024-08-19") & date <= as.Date("2024-08-23")  ~ "Ankerana",
+      
+      date >= as.Date("2024-08-26") & date <= as.Date("2024-08-30")  ~ "Soavimasoandro",
+      
+      date >= as.Date("2024-10-10") & date <= as.Date("2024-10-16") ~ "Ampandrana",
+      date >= as.Date("2024-10-17") & date <= as.Date("2024-10-31") ~ "Ambatomaro",
+                  TRUE ~ NA
+    )
+  )
+View(com)
+```
+
+Quality check of the previous step (dates with no fokontany attributed will represent dates of trial work, not to be included downstream)
+
+```{r}
+#check if all fkt exist
+unique(com$fkt)
+
+#check if all days have been asigned to a fkt
+com %>% filter(is.na(fkt)) %>% distinct(date)
+```
+
+## Summarizing and visualizing the count data
+
+### Daily summaries per fokontany
+
+```{r}
+#retain only variables pertaining to count, fokontany and date
+com_clean <- com %>% 
+  mutate (n = nombre.de.chien) %>%
+  dplyr::select(date, n, fkt) %>% 
+  filter(!is.na(fkt))
+
+#sum per day per fokontany
+sumfktday <-com_clean %>%
+  group_by(date, fkt) %>%
+  summarise(sum_fkt = sum(n, na.rm = TRUE))
+
+#mean, min, max and variance of the daily counts per fokontany
+summary_fkt <-sumfktday %>%
+  group_by(fkt) %>%
+  summarise(minfkt= min(sum_fkt),
+            maxfkt= max(sum_fkt),
+            meanfkt = mean(sum_fkt),
+            varfkt = var(sum_fkt),
+            varmean = varfkt/meanfkt
+            ) %>%
+  mutate(id = c(1:19))
+
+#visualize
+View(as.data.frame(summary_fkt))
+
+boxplot(sum_fkt ~ fkt, data = sumfktday, las = 2, cex.axis = 0.5)
+
+```
+
+### Daily summaries per path (team)
+
+```{r}
+#retain only count, fokontany and date
+com_clean_transect <- com %>% 
+  mutate (
+    n = nombre.de.chien,
+    transect = paste(fkt, UserName), 
+    date = as.Date(date, format = "%d/%m/%Y")) %>%
+  select(date, n, fkt, transect) %>% 
+  arrange(date, transect) %>%
+  filter(!is.na(fkt)) 
+
+head(com_clean_transect)
+unique(com_clean_transect$transect)
+
+#sum per day per transect
+sum_transect_day <-com_clean_transect %>%
+  group_by(fkt, transect, date) %>%
+  summarise(sum_transect = sum(n, na.rm = TRUE))
+
+#mean, min, max and variance of the daily counts per transect
+summary_transect <- sum_transect_day %>%
+  group_by(transect) %>%
+  summarise(
+    mean_transect = mean(sum_transect, na.rm = TRUE),
+    max_transect = max(sum_transect, na.rm = TRUE),
+    min_transect = min(sum_transect, na.rm = TRUE),
+    variance_transect = var(sum_transect, na.rm = TRUE), 
+    varmean = (variance_transect / mean_transect)
+  )
+
+View(as.data.frame(summary_transect))
+
+```
+
+## Count matrices
+
+### Matrix of counts using fokontany as site
+
+```{r}
+sfd_ranks <- sumfktday %>%
+  group_by(fkt) %>%
+  arrange(fkt, date) %>%
+  mutate(repetition = row_number())
+
+obs_matrix_fkt <- sfd_ranks %>%
+  dplyr::select(fkt, sum_fkt, repetition) %>%
+  pivot_wider(
+    names_from = repetition,
+    values_from = sum_fkt) %>%
+  ungroup() %>% 
+  dplyr::select(- fkt) %>%
+  as.matrix()
+  
+obs_matrix_fkt
+
+write.csv(obs_matrix_fkt, "obs_matrix_fkt.csv")
+```
+
+### Matrix of counts using path as site
+
+```{r}
+sum_transect_day_ranked <- sum_transect_day %>%
+  group_by(transect) %>%
+  mutate(repetition = row_number()) %>%
+  ungroup()
+
+obs_matrix_transect <- sum_transect_day_ranked %>%
+  select(transect, repetition, sum_transect) %>%
+  pivot_wider(
+    names_from = repetition,
+    values_from = sum_transect) %>%
+  ungroup() %>% 
+  select(- transect) %>%
+  as.matrix()
+ 
+obs_matrix_transect
+
+write.csv(obs_matrix_transect, "obs_matrix_transect.csv")
+
+
+```
