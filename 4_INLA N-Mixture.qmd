@@ -1,0 +1,1342 @@
+---
+title: "INLA N-mixture"
+author: "Katerina"
+format: html
+editor: visual
+---
+
+Packages
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library("INLA") 
+
+```
+
+## Models using fokontany as site
+
+### Load Data; fokontany as site
+
+The files we load here were created in the workflows "count data preparation" and "covariate data preparation". If you did not create the objects, they are provided in the github repository, so you can just load the csv filed required here.
+
+Note that INLA gets too complicated when there is different number of surveys per site, so we use the first five days / visits at each site, not making use of 9 repetitions in one the the 19 sites.
+
+```{r}
+sitecovs_fkt <- read.csv("sitecovs_fkt.csv") %>% mutate(
+  se_classe = recode(as.character(Seclasse),
+                       "Riche" = 5,
+                       "Moyen" = 3,
+                       "Pauvre" = 1) %>% as.numeric()  %>% scale() %>% as.numeric(),)
+
+View(sitecovs_fkt)
+
+obs_matrix_fkt_5 <- as.matrix(read_csv("obs_matrix_fkt.csv", col_select = 2:6))
+
+mean(obs_matrix_fkt_5)
+range(obs_matrix_fkt_5)
+```
+
+#### Model 1
+
+```{r}
+counts_mdata1 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,               
+  sitecovs_fkt$pop_dens_s,                  
+  sitecovs_fkt$pcc_s)
+
+data_list1 <- list(
+  counts_mdata1 = counts_mdata1, 
+  index1 = sitecovs_fkt$index1,
+  index2  = sitecovs_fkt$index2)
+
+model_1 <- inla(
+  counts_mdata1 ~ 1 + index1 + index2,   
+  data = data_list1,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_1)
+
+print(model_1$ok)
+
+inla.nmix.lambda.fitted(model_1)
+
+inla.nmix.lambda.fitted(model_1)$fitted.summary %>% pull(mean.lambda) %>% sum() #sum per all sites
+inla.nmix.lambda.fitted(model_1)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_1)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_1$summary.fixed["(Intercept)","mean"]) #average detection probability
+
+```
+
+#### Model 2
+
+```{r}
+counts_mdata2 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,               
+  sitecovs_fkt$pop_dens_s,
+  sitecovs_fkt$se_classe)
+
+data_list2 <- list(
+  counts_mdata2 = counts_mdata2, 
+  index1 = sitecovs_fkt$index1,
+  index2 = sitecovs_fkt$index2)
+
+model_2 <- inla(
+  counts_mdata2 ~ 1 + index1 +index2,   
+  data = data_list2,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_2)
+
+print(model_2$ok)
+
+inla.nmix.lambda.fitted(model_2)
+
+inla.nmix.lambda.fitted(model_2)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_2)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_2)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_2$summary.fixed["(Intercept)","mean"]) 
+```
+
+#### Model 3
+
+```{r}
+counts_mdata3 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,               
+  sitecovs_fkt$pop_dens_s)
+
+data_list3 <- list(
+  counts_mdata3 = counts_mdata3, 
+  index1 = sitecovs_fkt$index1)
+
+model_3 <- inla(
+  counts_mdata3 ~ 1 + index1,   
+  data = data_list3,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_3)
+
+print(model_3$ok)
+
+inla.nmix.lambda.fitted(model_3)
+
+inla.nmix.lambda.fitted(model_3)$fitted.summary %>% pull(mean.lambda) %>% sum() 
+inla.nmix.lambda.fitted(model_3)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_3)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_3$summary.fixed["(Intercept)","mean"]) 
+```
+
+```{r}
+results_m3 <- as.data.frame(inla.nmix.lambda.fitted(model_3))%>% mutate(
+  Fokontany = sitecovs_fkt$fkt,
+  area_ha = sitecovs_fkt$area_real / 10000,
+  population = sitecovs_fkt$population,
+  dogs_density = fitted.summary.mean.lambda / area_ha, 
+  dog_per_km = fitted.summary.mean.lambda / sitecovs_fkt$length)
+
+write.csv(results_m3, file = "resultsm3.csv")
+```
+
+#### Model 3 b
+
+```{r}
+# Separate candidate model: add a site-level iid effect.
+# This is not replacing Model 3; it is fitted as an additional model for comparison.
+
+sitecovs_fkt$site_id <- seq_len(nrow(sitecovs_fkt))
+
+counts_mdata3_site <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,
+  sitecovs_fkt$length_s,
+  sitecovs_fkt$pop_dens_s
+)
+
+data_list3_site <- list(
+  counts_mdata3_site = counts_mdata3_site,
+  index1 = sitecovs_fkt$index1,
+  site_id = sitecovs_fkt$site_id
+)
+
+model_3_site_iid <- inla(
+  counts_mdata3_site ~ 1 + index1 + 
+    f(site_id, model = "iid",
+      hyper = list(prec = list(prior = "pc.prec", param = c(1, 0.01)))),
+  data = data_list3_site,
+  family = "nmix",
+
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior = "loggamma", param = c(1, 0.5))
+    )
+  ),
+
+  control.compute = list(cpo = TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor = TRUE, config = TRUE)
+)
+
+summary(model_3_site_iid)
+
+print(model_3_site_iid$ok)
+
+
+```
+
+#### Model 4
+
+```{r}
+counts_mdata4 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$area_s,               
+  scale(sitecovs_fkt$p_urban),
+  scale(sitecovs_fkt$p_green))
+  
+data_list4 <- list(
+  counts_mdata4 = counts_mdata4,
+  index1 = sitecovs_fkt$index1)
+
+model_4 <- inla(
+  counts_mdata4 ~ 1 + index1,   
+  data = data_list4,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_4)
+
+print(model_4$ok)
+
+inla.nmix.lambda.fitted(model_4)
+
+inla.nmix.lambda.fitted(model_4)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_4)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_4)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_4$summary.fixed["(Intercept)","mean"])
+```
+
+```         
+```
+
+#### Model 5
+
+```{r}
+counts_mdata5 <- inla.mdata(
+   obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,               
+  scale(sitecovs_fkt$p_urban),
+  scale(sitecovs_fkt$p_green))
+  
+data_list5 <- list(
+  counts_mdata5 = counts_mdata5,
+  index1 = sitecovs_fkt$index1)
+
+model_5 <- inla(
+  counts_mdata5 ~ 1 + index1,   
+  data = data_list5,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_5)
+
+print(model_5$ok)
+
+inla.nmix.lambda.fitted(model_5)
+
+inla.nmix.lambda.fitted(model_5)$fitted.summary %>% pull(mean.lambda) %>% sum() 
+inla.nmix.lambda.fitted(model_5)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_5)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_5$summary.fixed["(Intercept)","mean"])
+```
+
+#### Model 6
+
+```{r}
+counts_mdata6 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,
+  sitecovs_fkt$index1)
+
+data_list6 <- list(
+  counts_mdata6 = counts_mdata6)
+
+model_6 <- inla(
+  counts_mdata6 ~ 1,
+  data = data_list6,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_6)
+
+print(model_6$ok)
+
+inla.nmix.lambda.fitted(model_6)
+
+inla.nmix.lambda.fitted(model_6)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_6)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_6)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_6$summary.fixed["(Intercept)","mean"])
+```
+
+#### Model 7
+
+```{r}
+counts_mdata7 <- inla.mdata(
+  obs_matrix_fkt_5,
+  1,                              
+  sitecovs_fkt$length_s,
+  scale(sitecovs_fkt$p_urban),
+  scale(sitecovs_fkt$p_green),
+  scale(sitecovs_fkt$p_industrial))
+
+data_list7 <- list(
+  counts_mdata7 = counts_mdata7,
+  index1 = sitecovs_fkt$index1)
+
+model_7 <- inla(
+  counts_mdata7 ~ 1 + index1,   
+  data = data_list7,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 4.77, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_7)
+
+print(model_7$ok)
+
+inla.nmix.lambda.fitted(model_7)
+
+inla.nmix.lambda.fitted(model_7)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_7)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_7)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_7$summary.fixed["(Intercept)","mean"])
+```
+
+## Models using transect as site
+
+```{r}
+sitecovs_transect <- read.csv("sitecovs_transect.csv")
+
+obs_matrix_transect_5 <- as.matrix(read_csv("obs_matrix_transect.csv", col_select = 2:6))
+
+View(sitecovs_transect)
+obs_matrix_transect_5
+
+mean(obs_matrix_transect_5)
+range(obs_matrix_transect_5)
+
+```
+
+#### Model 10
+
+```{r}
+counts_mdata10 <- inla.mdata(
+  obs_matrix_transect_5,
+  1,                              
+  sitecovs_transect$length_s,               
+  sitecovs_transect$pop_dens_s)
+
+data_list10 <- list(
+  counts_mdata10 = counts_mdata10, 
+  index1 = sitecovs_transect$index1,
+  index2  = sitecovs_transect$index2)
+
+model_10 <- inla(
+  counts_mdata10 ~ 1 + index1 + index2,   
+  data = data_list10,
+  family = "nmixnb",
+  
+  control.fixed = list(mean.intercept = 3, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_10)
+
+print(model_10$ok)
+
+inla.nmix.lambda.fitted(model_10)
+
+inla.nmix.lambda.fitted(model_10)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_10)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_10)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_10$summary.fixed["(Intercept)","mean"]) 
+```
+
+#### Model 11
+
+```{r}
+counts_mdata11 <- inla.mdata(
+  obs_matrix_transect_5,
+  1,                              
+  sitecovs_transect$length_s,               
+  sitecovs_transect$index1)
+
+data_list11 <- list(
+  counts_mdata11 = counts_mdata11, 
+  index2 = sitecovs_transect$index2)
+
+model_11 <- inla(
+  counts_mdata11 ~ 1 + index2,   
+  data = data_list11,
+  family = "nmix",
+  
+  control.fixed = list(mean.intercept = 3, prec.intercept = 0.1),
+  
+  control.family = list(
+    hyper = list(
+      theta1 = list(prior="loggamma", param=c(1, 0.5)))),
+  
+  control.compute = list(cpo=TRUE, dic = TRUE, waic = TRUE, return.marginals.predictor=TRUE, config = TRUE))
+
+summary(model_11)
+
+print(model_11$ok)
+
+inla.nmix.lambda.fitted(model_11)
+
+inla.nmix.lambda.fitted(model_11)$fitted.summary %>% pull(mean.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_11)$fitted.summary %>% pull(quant025.lambda) %>% sum()
+inla.nmix.lambda.fitted(model_11)$fitted.summary %>% pull(quant975.lambda) %>% sum()
+plogis(model_11$summary.fixed["(Intercept)","mean"]) 
+```
+
+# Model Comparison
+
+```{r}
+# Helper function to extract metrics
+extract_metrics <- function(model, model_name) {
+  dic <- model$dic$dic
+  waic <- model$waic$waic
+  mlik <- model$mlik[1]
+  plml <- mean(log(pmin(model$cpo$cpo, 1e10)), na.rm = TRUE) 
+  
+  return(data.frame(
+    model = model_name,
+    DIC = dic,
+    WAIC = waic,
+    MLIK = mlik,
+    PLML = plml,
+    stringsAsFactors = FALSE
+  ))
+}
+
+comparison <- list(
+  extract_metrics(model_1, "Model 1"),
+  extract_metrics(model_2, "Model 2"),
+  extract_metrics(model_3, "Model 3"),
+  extract_metrics(model_4, "Model 4"),
+  extract_metrics(model_5, "Model 5"),
+  extract_metrics(model_10, "Model 6"),
+  extract_metrics(model_11, "Model 7"))
+
+dplyr::bind_rows(comparison)
+
+```
+
+Recall;
+
+DIC, WAIC, PLML: Lower values indicate better fit
+
+MLIK: Higher values indicate better model (marginal likelihood); better predictive capacity
+
+## PPC for the best models
+
+Models 2 and 3 have overall the best criteria and ecologcially makes sense;
+
+positive influence of index1 on detection =\> where index1 is negative (=high proportion of compact urban structure) detection is low, where positive (= high proportion of ricefields), detection is higher.
+
+```{r}
+set.seed(123)
+
+# Hierarchical PPC for Model 2
+# Abundance uncertainty: lambda_i from inla.nmix.lambda.fitted()
+# Detection uncertainty: p_i = logit^{-1}(theta0 + theta1 * index1_i)
+
+lambda_sum <- inla.nmix.lambda.fitted(model_2)$fitted.summary #abundance summary
+lambda_mean <- lambda_sum$mean.lambda # posterior mean abundance
+lambda_sd <- pmax(lambda_sum$sd.lambda, 1e-8) #sd per site, slight positivity forced
+
+idx1 <- as.numeric(data_list2$index1)
+
+fixed_sum <- model_2$summary.fixed
+theta0_mean <- fixed_sum["(Intercept)", "mean"] #posterior mean of the detection intercept (baseline detection)
+theta0_sd <- pmax(fixed_sum["(Intercept)", "sd"], 1e-8) #ps sd det inter, forced slightly pos
+theta1_mean <- fixed_sum["index1", "mean"] # posterior mean of effect of index1
+theta1_sd <- pmax(fixed_sum["index1", "sd"], 1e-8) #ps sd index1
+
+y_obs <- obs_matrix_fkt_5
+
+sum(obs_matrix_fkt_5)
+
+site_names <- as.character(sitecovs_fkt$fkt) 
+n_sites <- nrow(y_obs)
+n_visits <- ncol(y_obs)
+n_samp <- 2000
+
+# Convert each site's posterior lambda into lognormal parameters (forcing slightly positive values)
+sdlog <- sqrt(log1p((lambda_sd^2) / pmax(lambda_mean^2, 1e-12)))
+meanlog <- log(pmax(lambda_mean, 1e-12)) - 0.5 * sdlog^2
+
+obs_total <- sum(y_obs)
+obs_site_tot <- rowSums(y_obs) #each site's total across visits
+
+# create storage objects for simulated results across iterations
+rep_total <- numeric(n_samp)
+rep_site_tot <- matrix(NA_real_, nrow = n_samp, ncol = n_sites) #empty matrix with 1 column per site and 1 row per each posterior sample
+
+
+# Simulation loop
+### each s is one replicated dataset
+
+for (s in seq_len(n_samp)) {
+  lambda_draw <- rlnorm(n_sites, meanlog = meanlog, sdlog = pmax(sdlog, 1e-8))
+
+  # Normal approximation for fixed effects / detection 
+  theta0_draw <- rnorm(1, mean = theta0_mean, sd = theta0_sd)
+  theta1_draw <- rnorm(1, mean = theta1_mean, sd = theta1_sd)
+  p_draw <- plogis(theta0_draw + theta1_draw * idx1)
+  p_draw <- pmin(pmax(p_draw, 1e-8), 1 - 1e-8)
+
+  N_draw <- rpois(n_sites, lambda_draw) #latent true abundance
+
+  #replicate the fieldwork under the principles established for model2
+  y_rep <- matrix(NA_real_, nrow = n_sites, ncol = n_visits)
+  for (i in seq_len(n_sites)) {
+    y_rep[i, ] <- rbinom(n_visits, size = N_draw[i], prob = p_draw[i])
+  }
+
+  rep_site_tot[s, ] <- rowSums(y_rep)
+  rep_total[s] <- sum(y_rep)
+}
+
+# Overall count comparison (all 19 sites pooled)
+overall_ppc <- tibble(
+  observed_total = obs_total,
+  predicted_median = median(rep_total),
+  predicted_q025 = quantile(rep_total, 0.025),
+  predicted_q975 = quantile(rep_total, 0.975),
+  p_rep_ge_obs = mean(rep_total >= obs_total),
+  p_rep_le_obs = mean(rep_total <= obs_total)
+)
+print(overall_ppc)
+
+ggplot(tibble(total_rep = rep_total), aes(x = total_rep)) +
+  geom_histogram(bins = 35, fill = "#1b6ca8", color = "white") +
+  geom_vline(xintercept = obs_total, color = "#cc3d3d", linewidth = 1) +
+  labs(
+    title = "PPC for Overall Count Across 19 Sites (Model 2)",
+    subtitle = "Blue: replicated totals, red line: observed total",
+    x = "Replicated overall count",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+# Site-level totals comparison
+site_ppc <- tibble(
+  site = site_names,
+  observed_total = obs_site_tot,
+  rep_median = apply(rep_site_tot, 2, median, na.rm = TRUE),
+  rep_q025 = apply(rep_site_tot, 2, quantile, probs = 0.025, na.rm = TRUE),
+  rep_q975 = apply(rep_site_tot, 2, quantile, probs = 0.975, na.rm = TRUE)
+)
+
+ggplot(site_ppc %>% mutate(site = factor(site, levels = site[order(observed_total)])), aes(x = site)) +
+  geom_pointrange(aes(y = rep_median, ymin = rep_q025, ymax = rep_q975), color = "#1b6ca8") +
+  geom_point(aes(y = observed_total), color = "#cc3d3d", size = 2) +
+  coord_flip() +
+  labs(
+    title = "Site-level Totals PPC (Model 2)",
+    subtitle = "Blue: replicated median and 95% interval, red: observed",
+    x = "Site",
+    y = "Total count across visits"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+set.seed(123)
+
+# Hierarchical PPC for Model 3
+# Abundance uncertainty: lambda_i from inla.nmix.lambda.fitted()
+# Detection uncertainty: p_i = logit^{-1}(theta0 + theta1 * index1_i)
+
+lambda_sum <- inla.nmix.lambda.fitted(model_3)$fitted.summary #abundance summary
+lambda_mean <- lambda_sum$mean.lambda # posterior mean abundance
+lambda_sd <- pmax(lambda_sum$sd.lambda, 1e-8) #sd per site, slight positivity forced
+
+idx1 <- as.numeric(data_list2$index1)
+
+fixed_sum <- model_2$summary.fixed
+theta0_mean <- fixed_sum["(Intercept)", "mean"] #posterior mean of the detection intercept (baseline detection)
+theta0_sd <- pmax(fixed_sum["(Intercept)", "sd"], 1e-8) #ps sd det inter, forced slightly pos
+theta1_mean <- fixed_sum["index1", "mean"] # posterior mean of effect of index1
+theta1_sd <- pmax(fixed_sum["index1", "sd"], 1e-8) #ps sd index1
+
+y_obs <- obs_matrix_fkt_5
+
+sum(obs_matrix_fkt_5)
+
+site_names <- as.character(sitecovs_fkt$fkt) 
+n_sites <- nrow(y_obs)
+n_visits <- ncol(y_obs)
+n_samp <- 2000
+
+# Convert each site's posterior lambda into lognormal parameters (forcing slightly positive values)
+sdlog <- sqrt(log1p((lambda_sd^2) / pmax(lambda_mean^2, 1e-12)))
+meanlog <- log(pmax(lambda_mean, 1e-12)) - 0.5 * sdlog^2
+
+obs_total <- sum(y_obs)
+obs_site_tot <- rowSums(y_obs) #each site's total across visits
+
+# create storage objects for simulated results across iterations
+rep_total <- numeric(n_samp)
+rep_site_tot <- matrix(NA_real_, nrow = n_samp, ncol = n_sites) #empty matrix with 1 column per site and 1 row per each posterior sample
+
+
+# Simulation loop
+### each s is one replicated dataset
+
+for (s in seq_len(n_samp)) {
+  lambda_draw <- rlnorm(n_sites, meanlog = meanlog, sdlog = pmax(sdlog, 1e-8))
+
+  # Normal approximation for fixed effects / detection 
+  theta0_draw <- rnorm(1, mean = theta0_mean, sd = theta0_sd)
+  theta1_draw <- rnorm(1, mean = theta1_mean, sd = theta1_sd)
+  p_draw <- plogis(theta0_draw + theta1_draw * idx1)
+  p_draw <- pmin(pmax(p_draw, 1e-8), 1 - 1e-8)
+
+  N_draw <- rpois(n_sites, lambda_draw) #latent true abundance
+
+  #replicate the fieldwork under the principles established for model2
+  y_rep <- matrix(NA_real_, nrow = n_sites, ncol = n_visits)
+  for (i in seq_len(n_sites)) {
+    y_rep[i, ] <- rbinom(n_visits, size = N_draw[i], prob = p_draw[i])
+  }
+
+  rep_site_tot[s, ] <- rowSums(y_rep)
+  rep_total[s] <- sum(y_rep)
+}
+
+# Overall count comparison (all 19 sites pooled)
+overall_ppc <- tibble(
+  observed_total = obs_total,
+  predicted_median = median(rep_total),
+  predicted_q025 = quantile(rep_total, 0.025),
+  predicted_q975 = quantile(rep_total, 0.975),
+  p_rep_ge_obs = mean(rep_total >= obs_total),
+  p_rep_le_obs = mean(rep_total <= obs_total)
+)
+print(overall_ppc)
+
+ggplot(tibble(total_rep = rep_total), aes(x = total_rep)) +
+  geom_histogram(bins = 35, fill = "#1b6ca8", color = "white") +
+  geom_vline(xintercept = obs_total, color = "#cc3d3d", linewidth = 1) +
+  labs(
+    title = "PPC for Overall Count Across 19 Sites (Model 3)",
+    subtitle = "Blue: replicated totals, red line: observed total",
+    x = "Replicated overall count",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+# Site-level totals comparison
+site_ppc <- tibble(
+  site = site_names,
+  observed_total = obs_site_tot,
+  rep_median = apply(rep_site_tot, 2, median, na.rm = TRUE),
+  rep_q025 = apply(rep_site_tot, 2, quantile, probs = 0.025, na.rm = TRUE),
+  rep_q975 = apply(rep_site_tot, 2, quantile, probs = 0.975, na.rm = TRUE)
+)
+
+ggplot(site_ppc %>% mutate(site = factor(site, levels = site[order(observed_total)])), aes(x = site)) +
+  geom_pointrange(aes(y = rep_median, ymin = rep_q025, ymax = rep_q975), color = "#1b6ca8") +
+  geom_point(aes(y = observed_total), color = "#cc3d3d", size = 2) +
+  coord_flip() +
+  labs(
+    title = "Site-level Totals PPC (Model 3)",
+    subtitle = "Blue: replicated median and 95% interval, red: observed",
+    x = "Site",
+    y = "Total count across visits"
+  ) +
+  theme_minimal()
+```
+
+## Graph Observed counts and estimated abundance per fokontany
+
+```{r}
+# Observed count distribution across 5 visits and estimated abundance (lambda) by fokontany
+site_names <- as.character(sitecovs_fkt[["fkt"]])
+site_lengths <- suppressWarnings(as.numeric(sitecovs_fkt[["length"]]))
+site_order <- unique(site_names[!is.na(site_names) & site_names != "" & is.finite(site_lengths)][order(site_lengths[!is.na(site_names) & site_names != "" & is.finite(site_lengths)])])
+
+lambda_plot_df <- inla.nmix.lambda.fitted(model_3)$fitted.summary %>%
+  as_tibble() %>%
+  mutate(
+    site = factor(sitecovs_fkt$fkt, levels = site_order)
+  )
+
+obs_plot_df <- as_tibble(obs_matrix_fkt_5) %>%
+  mutate(site = factor(sitecovs_fkt$fkt, levels = site_order)) %>%
+  pivot_longer(
+    cols = -site,
+    names_to = "visit",
+    values_to = "count"
+  ) %>%
+  mutate(visit = factor(visit, levels = paste0("...", 1:5), labels = paste("Visit", 1:5))) %>%
+  filter(!is.na(site), !is.na(count))
+
+lambda_plot_df <- lambda_plot_df %>%
+  filter(!is.na(site), is.finite(mean.lambda), is.finite(quant025.lambda), is.finite(quant975.lambda))
+
+ggplot() +
+  geom_point(
+    data = obs_plot_df,
+    aes(x = site, y = count),
+    position = position_jitter(width = 0.06, height = 0),
+    size = 1.1,
+    color = "#0b3c5d",
+    alpha = 0.85,
+    na.rm = TRUE
+  ) +
+  geom_pointrange(
+    data = lambda_plot_df,
+    aes(
+      x = site,
+      y = mean.lambda,
+      ymin = quant025.lambda,
+      ymax = quant975.lambda
+    ),
+    color = "#cc3d3d",
+    fatten = 1.2,
+    linewidth = 0.5,
+    position = position_nudge(x = 0.28),
+    na.rm = TRUE
+  ) +
+  coord_flip() +
+  labs(
+    title = "Observed counts and estimated abundance by fokontany",
+    x = "Fokontany",
+    y = "Count / estimated abundance"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 9),
+    legend.position = "bottom"
+  )
+```
+
+## Graph observed counts versus predicted counts
+
+```{r}
+# Observed count dispersion (box-whisker) vs predicted observed counts (lambda * p)
+# Note: CI for lambda*p is an approximation combining lambda and detection-coefficient quantiles.
+
+coef_df <- model_3$summary.fixed %>%
+  as.data.frame() %>%
+  rownames_to_column("term")
+
+beta0_mean <- coef_df %>% filter(term == "(Intercept)") %>% pull(mean)
+beta1_mean <- coef_df %>% filter(term == "index1") %>% pull(mean)
+beta2_mean <- coef_df %>% filter(term == "index2") %>% pull(mean)
+
+beta0_lwr <- coef_df %>% filter(term == "(Intercept)") %>% pull(`0.025quant`)
+beta1_lwr <- coef_df %>% filter(term == "index1") %>% pull(`0.025quant`)
+beta2_lwr <- coef_df %>% filter(term == "index2") %>% pull(`0.025quant`)
+
+beta0_upr <- coef_df %>% filter(term == "(Intercept)") %>% pull(`0.975quant`)
+beta1_upr <- coef_df %>% filter(term == "index1") %>% pull(`0.975quant`)
+beta2_upr <- coef_df %>% filter(term == "index2") %>% pull(`0.975quant`)
+
+p_df <- tibble(
+  site = factor(sitecovs_fkt$fkt, levels = site_order),
+  index1 = as.numeric(sitecovs_fkt$index1)
+) %>%
+  mutate(
+    p_mean = plogis(beta0_mean + beta1_mean * index1),
+    p_lwr = plogis(beta0_lwr + beta1_lwr * index1),
+    p_upr = plogis(beta0_upr + beta1_upr * index1)
+  ) %>%
+  filter(!is.na(site), is.finite(p_mean), is.finite(p_lwr), is.finite(p_upr))
+
+pred_obs_df <- lambda_plot_df %>%
+  left_join(p_df, by = "site") %>%
+  transmute(
+    site,
+    mean_lp = mean.lambda * p_mean,
+    lwr_lp = quant025.lambda * p_lwr,
+    upr_lp = quant975.lambda * p_upr
+  ) %>%
+  filter(!is.na(site), is.finite(mean_lp), is.finite(lwr_lp), is.finite(upr_lp))
+
+obs_box_df <- obs_plot_df %>%
+  filter(!is.na(site), is.finite(count))
+
+ggplot() +
+  geom_boxplot(
+    data = obs_box_df,
+    aes(x = site, y = count, group = site),
+    width = 0.55,
+    fill = "#d9e6f2",
+    color = "#4f6d7a",
+    outlier.shape = NA,
+    na.rm = TRUE
+  ) +
+  geom_pointrange(
+    data = pred_obs_df,
+    aes(x = site, y = mean_lp, ymin = lwr_lp, ymax = upr_lp),
+    color = "#2e8b57",
+    fatten = 1.2,
+    linewidth = 0.5,
+    position = position_nudge(x = 0.28),
+    na.rm = TRUE
+  ) +
+  coord_flip() +
+  labs(
+    title = "Observed count dispersion vs predicted observed counts (Model 3)",
+    x = "Fokontany",
+    y = "Observed counts / predicted observed counts"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 9),
+    legend.position = "bottom"
+  )
+```
+
+# Extrapolation CUA
+
+### Extrapolation based on urban proportions
+
+```{r}
+
+# sample totals
+sample_area <- sum(sitecovs_fkt$area_real) / 10000
+sample_dogs <- inla.nmix.lambda.fitted(model_3)$fitted.summary %>% pull(mean.lambda) %>% sum()
+sample_density <- sample_dogs / sample_area
+
+# distribution of classes in sample and their proportions
+sample_green <- sum(sitecovs_fkt$area_real *sitecovs_fkt$p_green) / 10000
+sample_industrial <- sum(sitecovs_fkt$area_real*sitecovs_fkt$p_industrial) / 10000
+sample_urban <- sum(sitecovs_fkt$area_real*sitecovs_fkt$p_urban) / 10000
+sample_water <- sum(sitecovs_fkt$area_real*sitecovs_fkt$p_water) / 10000
+
+p_sample_green <- sample_green / sample_area
+p_sample_industrial <- sample_industrial / sample_area
+p_sample_urban <- sample_urban / sample_area
+p_sample_water <- sample_water / sample_area
+
+sampled_class_props <- data.frame(
+  class = c("green","industrial","urban","water"),
+  area_ha = c(sample_green, sample_industrial, sample_urban, sample_water),
+  proportion = c(p_sample_green, p_sample_industrial, p_sample_urban, p_sample_water),
+  emmeans_rate = c(172, 1618, 4767, 470)
+) %>% mutate(
+  dog_share = (proportion * emmeans_rate) / sum(proportion * emmeans_rate),
+  dogs_in_class = dog_share * sample_dogs,
+  density_per_class = dogs_in_class / area_ha
+)
+
+sampled_class_props
+
+dogs_per_fkt <- urban_str_fkt_all %>% transmute(
+  fkt = fkt,
+  area_ha = area / 10000,
+  dogs_green = 0.14 * area_ha * p_green, 
+  dogs_industrial = 1.32 * area_ha * p_industrial,
+  dogs_urban = 3.89 * area_ha * p_urban,
+  dogs_water = 0.38 * area_ha * p_water,
+  dogs_total = dogs_green + dogs_urban + dogs_industrial + dogs_water
+)
+
+sum(dogs_per_fkt$dogs_total)
+
+```
+
+### Propagation of uncertainty in the extrapolate
+
+```{r}
+
+set.seed(123)
+n_sim <- 5000
+
+urban_str_fkt_all <- read.csv("urban_str_all_fkt.csv")
+
+# 1) Draw sampled abundance from model_3 posterior uncertainty
+fit_sum <- inla.nmix.lambda.fitted(model_3)$fitted.summary
+# expected columns: mean.lambda, sd.lambda
+
+mu_sd_to_lnorm <- function(m, s) {
+  # Convert mean/sd on natural scale -> lognormal parameters
+  sigma2 <- log1p((s^2) / (m^2))
+  mu <- log(m) - 0.5 * sigma2
+  c(mu = mu, sdlog = sqrt(sigma2))
+}
+
+pars <- t(mapply(mu_sd_to_lnorm, fit_sum$mean.lambda, fit_sum$sd.lambda))
+
+# lambda draws per site and simulation
+lambda_draws <- sapply(seq_len(nrow(fit_sum)), function(i) {
+  rlnorm(n_sim, meanlog = pars[i, "mu"], sdlog = pars[i, "sdlog"])
+})
+
+# Optional process layer: N_i | lambda_i ~ Poisson(lambda_i)
+N_draws <- matrix(
+  rpois(length(lambda_draws), lambda = as.vector(lambda_draws)),
+  nrow = n_sim
+)
+
+sample_dogs_draw <- rowSums(N_draws)   # posterior draws of sampled total dogs
+
+# 2) Keep your class composition logic
+A_sample <- setNames(sampled_class_props$area_ha, sampled_class_props$class)
+w_class  <- setNames(sampled_class_props$dog_share, sampled_class_props$class)
+
+# 3) Build a deterministic multiplier per fokontany
+# dogs_fkt_draw = sample_dogs_draw * k_fkt
+k_fkt <- urban_str_fkt_all %>%
+  transmute(
+    fkt = fkt,
+    area_ha = area / 10000,
+    k = area_ha * (
+      (w_class["green"]      / A_sample["green"])      * p_green +
+      (w_class["industrial"] / A_sample["industrial"]) * p_industrial +
+      (w_class["urban"]      / A_sample["urban"])      * p_urban +
+      (w_class["water"]      / A_sample["water"])      * p_water
+    )
+  )
+
+city_multiplier <- sum(k_fkt$k, na.rm = TRUE)
+
+# 4) Posterior draws for city total
+city_total_draw <- sample_dogs_draw * city_multiplier
+
+# 5) Summary with uncertainty interval
+city_summary <- c(
+  mean   = mean(city_total_draw),
+  median = median(city_total_draw),
+  lcl95  = quantile(city_total_draw, 0.025),
+  ucl95  = quantile(city_total_draw, 0.975)
+)
+
+city_summary
+```
+
+This goes too far maybe... uncertainty propagation from emmeans
+
+```{r}
+library(dplyr)
+library(emmeans)
+library(MASS)
+
+set.seed(123)
+n_sim <- 5000
+
+# -----------------------------
+# A) Draw sampled total dogs from model_6
+# -----------------------------
+fit_sum <- inla.nmix.lambda.fitted(model_6)$fitted.summary
+# expected columns: mean.lambda, sd.lambda
+
+mu_sd_to_lnorm <- function(m, s) {
+  sigma2 <- log1p((s^2) / (m^2))
+  mu <- log(m) - 0.5 * sigma2
+  c(mu = mu, sdlog = sqrt(sigma2))
+}
+
+pars <- t(mapply(mu_sd_to_lnorm, fit_sum$mean.lambda, fit_sum$sd.lambda))
+
+lambda_draws <- sapply(seq_len(nrow(fit_sum)), function(i) {
+  rlnorm(n_sim, meanlog = pars[i, "mu"], sdlog = pars[i, "sdlog"])
+})
+
+# Optional process layer:
+N_draws <- matrix(
+  rpois(length(lambda_draws), lambda = as.vector(lambda_draws)),
+  nrow = n_sim
+)
+
+sample_dogs_draw <- rowSums(N_draws)
+
+# -----------------------------
+# B) Draw class rates from emmeans uncertainty
+# -----------------------------
+# Replace glm_class with your fitted Poisson model used for emmeans
+# Example: glm_class <- glm(count ~ class + offset(log(area_ha)), family = poisson, data = ...)
+emm_link <- emmeans(m, ~ class, type = "link")
+
+emm_df <- as.data.frame(emm_link)
+mu_eta <- emm_df$emmean
+Sigma_eta <- as.matrix(vcov(emm_link))
+
+eta_draw <- MASS::mvrnorm(n = n_sim, mu = mu_eta, Sigma = Sigma_eta)
+rate_draw <- exp(eta_draw)  # dogs per ha if your model was built as rate model with offset(log(area))
+
+colnames(rate_draw) <- as.character(emm_df$class)
+
+# -----------------------------
+# C) Convert sampled class rates -> sampled dog shares each simulation
+# -----------------------------
+# Sample composition in the sampled zone
+p_sample <- c(
+  green = p_sample_green,
+  industrial = p_sample_industrial,
+  urban = p_sample_urban,
+  water = p_sample_water
+)
+
+# Keep only required classes in a fixed order
+rate_draw <- rate_draw[, c("green", "industrial", "urban", "water"), drop = FALSE]
+
+# weights per simulation = p_k * rate_k
+w_draw <- sweep(rate_draw, 2, p_sample, "*")
+dog_share_draw <- w_draw / rowSums(w_draw)
+
+# sampled class areas (ha)
+A_sample <- c(
+  green = sample_green,
+  industrial = sample_industrial,
+  urban = sample_urban,
+  water = sample_water
+)
+
+# dogs per class in sampled zone (per simulation)
+dogs_class_draw <- dog_share_draw * sample_dogs_draw
+
+# class densities (dogs/ha) per simulation
+dens_class_draw <- sweep(dogs_class_draw, 2, A_sample, "/")
+# matrix n_sim x 4, columns = green industrial urban water
+
+# -----------------------------
+# D) Extrapolate to whole city for each simulation
+# -----------------------------
+city_df <- urban_str_fkt_all %>%
+  transmute(
+    fkt = fkt,
+    area_ha = area / 10000,
+    p_green = p_green,
+    p_industrial = p_industrial,
+    p_urban = p_urban,
+    p_water = p_water
+  )
+
+# effective city area by class (ha)
+city_class_area <- c(
+  green = sum(city_df$area_ha * city_df$p_green, na.rm = TRUE),
+  industrial = sum(city_df$area_ha * city_df$p_industrial, na.rm = TRUE),
+  urban = sum(city_df$area_ha * city_df$p_urban, na.rm = TRUE),
+  water = sum(city_df$area_ha * city_df$p_water, na.rm = TRUE)
+)
+
+# total dogs in city per simulation
+# each sim: sum_k density_k(sim) * city_class_area_k
+city_total_draw <- dens_class_draw %*% as.numeric(city_class_area)
+city_total_draw <- as.numeric(city_total_draw)
+
+city_summary <- c(
+  mean = mean(city_total_draw),
+  median = median(city_total_draw),
+  lcl95 = quantile(city_total_draw, 0.025),
+  ucl95 = quantile(city_total_draw, 0.975)
+)
+
+city_summary
+```
+
+### Extrapolation based on dog-to-human ratio
+
+```{r}
+sample_average_hum_dens <- sum(sitecovs_fkt$population) / sum(sitecovs_fkt$area_admin) * 10000
+sample_humans <- sample_average_hum_dens * sum(sitecovs_fkt$area_real)/10000
+sample_dogs / sample_humans
+
+1350000*(sample_dogs / sample_humans) #human population in CUA in 2024
+```
+
+```{r}
+set.seed(123)
+n_sim <- 5000
+
+# 1) Fixed human denominator in sampled area
+sample_average_hum_dens <- sum(sitecovs_fkt$population) / sum(sitecovs_fkt$area_admin) * 10000
+sample_humans <- sample_average_hum_dens * sum(sitecovs_fkt$area_real) / 10000
+
+# 2) Draw sampled dogs from model_6 uncertainty
+fit_sum <- inla.nmix.lambda.fitted(model_6)$fitted.summary
+# expected columns: mean.lambda, sd.lambda
+
+mu_sd_to_lnorm <- function(m, s) {
+  sigma2 <- log1p((s^2) / (m^2))
+  mu <- log(m) - 0.5 * sigma2
+  c(mu = mu, sdlog = sqrt(sigma2))
+}
+
+pars <- t(mapply(mu_sd_to_lnorm, fit_sum$mean.lambda, fit_sum$sd.lambda))
+
+lambda_draws <- sapply(seq_len(nrow(fit_sum)), function(i) {
+  rlnorm(n_sim, meanlog = pars[i, "mu"], sdlog = pars[i, "sdlog"])
+})
+
+# Optional process variation: N_i | lambda_i ~ Poisson(lambda_i)
+N_draws <- matrix(
+  rpois(length(lambda_draws), lambda = as.vector(lambda_draws)),
+  nrow = n_sim
+)
+
+sample_dogs_draw <- rowSums(N_draws)
+
+# 3) Dog-to-human ratio draws and city extrapolation draws
+ratio_draw <- sample_dogs_draw / sample_humans
+city_dogs_draw <- 1350000 * ratio_draw
+
+# 4) Summaries
+ratio_summary <- c(
+  mean = mean(ratio_draw),
+  median = median(ratio_draw),
+  lcl95 = quantile(ratio_draw, 0.025),
+  ucl95 = quantile(ratio_draw, 0.975)
+)
+
+city_summary <- c(
+  mean = mean(city_dogs_draw),
+  median = median(city_dogs_draw),
+  lcl95 = quantile(city_dogs_draw, 0.025),
+  ucl95 = quantile(city_dogs_draw, 0.975)
+)
+
+ratio_summary
+city_summary
+```
+
+# Additional considerations
+
+### Do the poorly fitted fokontany have something in common?
+
+```{r}
+# Diagnose why some fokontany fit poorly in the observed-vs-predicted count graph.
+# This separates mean mismatch from excessive within-site variability.
+
+lambda_diag_df <- lambda_plot_df %>%
+  transmute(
+    site,
+    lambda_mean = mean.lambda,
+    lambda_lwr = quant025.lambda,
+    lambda_upr = quant975.lambda
+  )
+
+site_diag_df <- obs_box_df %>%
+  group_by(site) %>%
+  summarise(
+    obs_mean = mean(count),
+    obs_median = median(count),
+    obs_sd = sd(count),
+    obs_min = min(count),
+    obs_max = max(count),
+    .groups = "drop"
+  ) %>%
+  left_join(pred_obs_df, by = "site") %>%
+  left_join(lambda_diag_df, by = "site") %>%
+  left_join(select(p_df, site, p_mean, p_lwr, p_upr), by = "site") %>%
+  mutate(
+    mean_gap = obs_mean - mean_lp,
+    upper_gap = obs_max - upr_lp,
+    lower_gap = lwr_lp - obs_min,
+    pred_sd_approx = pmax((upr_lp - lwr_lp) / 3.92, 1e-6),
+    spread_ratio = obs_sd / pred_sd_approx,
+    likely_issue = case_when(
+      obs_min > upr_lp ~ "All visits are higher than predicted: abundance likely underestimated or a site covariate is missing.",
+      obs_max < lwr_lp ~ "All visits are lower than predicted: abundance likely overestimated or detection is too high.",
+      abs(mean_gap) <= 0.5 & spread_ratio > 1.5 ~ "Average count is about right, but visit-to-visit variation is too large: missing detection heterogeneity or overdispersion.",
+      mean_gap > 0 ~ "Observed counts are usually above prediction: lambda or p is too low.",
+      mean_gap < 0 ~ "Observed counts are usually below prediction: lambda or p is too high.",
+      TRUE ~ "No clear single cause."
+    ),
+    misfit_score = abs(mean_gap) + pmax(upper_gap, 0) + pmax(lower_gap, 0)
+  ) %>%
+  arrange(desc(misfit_score))
+
+site_diag_df %>%
+  select(site, obs_mean, obs_min, obs_max, mean_lp, lwr_lp, upr_lp, lambda_mean, p_mean, spread_ratio, likely_issue) %>%
+  print(n = nrow(.))
+
+worst_sites <- site_diag_df %>%
+  slice_head(n = 6) %>%
+  pull(site) %>%
+  as.character()
+
+visit_diag_df <- obs_plot_df %>%
+  filter(as.character(site) %in% worst_sites) %>%
+  left_join(select(pred_obs_df, site, mean_lp, lwr_lp, upr_lp), by = "site") %>%
+  mutate(
+    site = factor(site, levels = worst_sites),
+    visit_residual = count - mean_lp
+  )
+
+ggplot(visit_diag_df, aes(x = visit, y = count, group = site)) +
+  geom_hline(aes(yintercept = mean_lp), color = "#2e8b57", linewidth = 0.5) +
+  geom_ribbon(aes(ymin = lwr_lp, ymax = upr_lp), fill = "#bfe3cf", alpha = 0.35) +
+  geom_line(color = "#0b3c5d", linewidth = 0.45) +
+  geom_point(color = "#0b3c5d", size = 1.6) +
+  facet_wrap(~ site, scales = "free_y") +
+  labs(
+    title = "Visit-level counts for the most poorly fit fokontany",
+    x = "Visit",
+    y = "Observed count"
+  ) +
+  theme_minimal()
+```
+
+How to read this diagnostic:
+
+-   If all five visits are mostly above the green band, the model is underestimating expected counts there. That usually points to missing abundance structure for that fokontany.
+-   If the average count is close to the green line but one or two visits jump far away, the problem is more likely missing visit-level detection variation.
+-   If the blue counts span a much wider range than the green band, the model is missing within-site overdispersion or temporal heterogeneity.
+-   Compare `lambda_mean` and `p_mean`: a site with high observed counts but moderate `lambda_mean` and ordinary `p_mean` suggests underestimated abundance; a site with low observed counts but high `lambda_mean` may indicate overstated detection or abundance.
+
+```{r}
+# Do the poorly fit fokontany share similar covariate values?
+
+bad_fit_sites <- site_diag_df %>%
+  slice_head(n = 5) %>%
+  transmute(site = as.character(site), misfit_score, likely_issue)
+
+numeric_covars <- c(
+  "length", "length_s", "pop_dens_s", "index1", "index2", "pcc_s", "pcc_total",
+  "area_s", "area_real", "area_admin", "p_compact", "p_sparse", "p_ricefield",
+  "p_industrial", "p_water", "percentage covared", "population"
+)
+numeric_covars <- intersect(numeric_covars, names(sitecovs_fkt))
+
+covar_profile_df <- sitecovs_fkt %>%
+  mutate(site = as.character(fkt)) %>%
+  semi_join(select(site_diag_df, site), by = "site") %>%
+  mutate(group = if_else(site %in% bad_fit_sites$site, "worst_fit", "other_sites")) %>%
+  select(site, group, all_of(numeric_covars)) %>%
+  pivot_longer(
+    cols = all_of(numeric_covars),
+    names_to = "covariate",
+    values_to = "value"
+  ) %>%
+  mutate(value = suppressWarnings(as.numeric(value))) %>%
+  filter(is.finite(value))
+
+covar_group_summary <- covar_profile_df %>%
+  group_by(covariate) %>%
+  mutate(
+    z_value = as.numeric(scale(value))
+  ) %>%
+  ungroup() %>%
+  group_by(covariate, group) %>%
+  summarise(
+    n = n(),
+    mean_value = mean(value),
+    mean_z = mean(z_value),
+    prop_above_global_median = mean(value > median(value, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = group,
+    values_from = c(n, mean_value, mean_z, prop_above_global_median)
+  ) %>%
+  mutate(
+    mean_diff = mean_value_worst_fit - mean_value_other_sites,
+    z_gap = mean_z_worst_fit - mean_z_other_sites,
+    median_direction_gap = prop_above_global_median_worst_fit - prop_above_global_median_other_sites
+  ) %>%
+  arrange(desc(abs(z_gap)))
+
+covar_group_summary %>%
+  select(covariate, n_worst_fit, n_other_sites, mean_value_worst_fit, mean_value_other_sites, z_gap, median_direction_gap) %>%
+  print(n = nrow(.))
+
+top_common_covars <- covar_group_summary %>%
+  slice_head(n = 6) %>%
+  pull(covariate)
+
+bad_fit_heatmap_df <- covar_profile_df %>%
+  filter(site %in% bad_fit_sites$site, covariate %in% top_common_covars) %>%
+  group_by(covariate) %>%
+  mutate(z_value = as.numeric(scale(value))) %>%
+  ungroup() %>%
+  mutate(
+    site = factor(site, levels = bad_fit_sites$site),
+    covariate = factor(covariate, levels = rev(top_common_covars))
+  )
+
+ggplot(bad_fit_heatmap_df, aes(x = site, y = covariate, fill = z_value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "#2166ac", mid = "#f7f7f7", high = "#b2182b", midpoint = 0) +
+  labs(
+    title = "Covariate profile of the worst-fit fokontany",
+    x = "Fokontany",
+    y = "Covariate",
+    fill = "Within-covariate z-score"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
