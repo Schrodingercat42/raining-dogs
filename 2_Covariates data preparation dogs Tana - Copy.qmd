@@ -1,0 +1,296 @@
+---
+title: "Covariates data preparation dogs Tana"
+author: "Katerina"
+format: html
+editor: visual
+---
+
+```{r}
+library(RStoolbox)    
+library(tidyverse)
+library(sf)         
+library(randomForest)   
+library(terra)         
+library(exactextractr) 
+library(units)
+library(pls)
+library(raster)
+library(emmeans)
+library(factoextra)
+
+```
+
+# Supervised classification of CUA satellite image
+
+```{r}
+#load satelite image
+tif <- brick("CUA_ras.tif") %>% setMinMax()
+
+# Load training polygons and align CRS to the raster
+train <- st_read("training_cls4.shp", quiet = TRUE) %>%
+  mutate(class = as.factor(class)) %>%
+  st_transform(crs = sf::st_crs(raster::crs(tif)))
+
+
+#supervised classification
+sc <- superClass(tif, trainData = train, responseCol = "class", model = "rf") 
+
+#check it out and save in file
+plot(sc$map)
+sc$classMapping
+writeRaster(sc$map, "classified_CUA.tif", overwrite = TRUE) #file not saved in github, too large
+
+plot(tif)
+```
+
+# Calculate proportions of urban classes per fokontany
+
+```{r}
+# load files; classified raster layer, polygons counted
+layer_cls <- raster::raster(sc$map) #or we can load classified tif, if sc is no more in the environment 
+
+fkt_counted <- st_read("Poly_fkt_counted_lar.shp") %>%
+  st_transform(crs = sf::st_crs(raster::crs(layer_cls))) %>%
+  arrange(tolower(Name))
+
+# superpose the layer and polygons and compute class-wise coverage directly
+coverage_fkt_counted <- exact_extract(
+  layer_cls,
+  fkt_counted,
+  function(values, coverage_fraction, ...) {
+    tapply(coverage_fraction, values, sum, na.rm = TRUE)
+  },
+  progress = FALSE)
+
+coverage_fkt_counted
+
+coverage_fkt_counted <- t(coverage_fkt_counted) #flipping the matrix
+
+#if i want to approximate real area in meters (but CAVE, there is a boundary error, it gives slightly higher values than QGIS)
+coverage_fkt_counted <- coverage_fkt_counted * (prod(res(layer_cls)))
+
+colnames(coverage_fkt_counted) <- sc$classMapping$class
+
+#arrange it into a neat dataframe
+urban_str_fkt <- as.data.frame(coverage_fkt_counted) %>%
+  mutate(
+    fkt = fkt_counted$Name,
+    id_fkt = 1:19,
+    sum = water + green + industrial + urban,
+    p_water = water/sum,
+    p_green = green/sum,
+    p_industrial = industrial / sum,
+    p_urban = urban/sum,
+    sum_check = p_water + p_green + p_industrial + p_urban)
+View(urban_str_fkt)
+
+write.csv(urban_str_fkt, file = "urban_str_fkt.csv")
+```
+
+# Calculate proportions of urban classes per patch
+
+```{r}
+transect_counted <- st_read("Transect_counted.shp")%>% st_transform(crs = crs(layer_cls)) %>% arrange(tolower(Name))
+
+# superpose the layer and the polygons and count per polygon coverage 
+coverage_transect_counted <- exact_extract(
+  layer_cls,
+  transect_counted,
+  function(values, coverage_fraction, ...) {
+    values <- factor(values, levels = sc$classMapping$classID)
+    out <- tapply(coverage_fraction, values, sum, na.rm = TRUE)
+    out[is.na(out)] <- 0
+    out
+  },
+  progress = FALSE)
+
+coverage_transect_counted <- t(coverage_transect_counted)
+colnames(coverage_transect_counted) <- sc$classMapping$class
+
+urban_str_transect <- as.data.frame(coverage_transect_counted) %>%
+  mutate(
+    name_transect = transect_counted$Name,
+    id_transect = 1:102,
+    sum = water + green + industrial + urban,
+    p_water = water/sum,
+    p_green = green/sum,
+    p_industrial = industrial / sum,
+    p_urban = urban/sum,
+    sum_check = p_water + p_green + p_industrial + p_urban)
+View(urban_str_transect)
+
+write.csv(urban_str_transect, file = "urban_str_transect.csv")
+
+```
+
+# Calculate proportions of urban classes in all fokontany
+
+This is to see what the proportions of different urban classes are doing. Please note that the sampled fokontany are not a subset of the total 192 fokontany; they are QGIS-created polygons surrounding the paths counted. Sometimes they are almost equal to administrative polygons, other times they are very different. The purpose of creating sampled fokontany polygons was to stay true to the real area that was counted (that is why, in the sitecovs_fkt, we have "area_admin" and area_real".)
+
+```{r}
+#load shp of all fokontany of the CUA (obtained from OCHA)
+fkt_all <- st_read("CUA_FKT.shp") %>% st_transform(crs(layer_cls)) %>% arrange(tolower(ADM4_EN))
+
+# superpose the layer and the polygons and count per polygon coverage 
+coverage_fkt_all <- exact_extract(
+  layer_cls,
+  fkt_all,
+  function(values, coverage_fraction, ...) {
+    values <- factor(values, levels = sc$classMapping$classID)
+    out <- tapply(coverage_fraction, values, sum, na.rm = TRUE)
+    out[is.na(out)] <- 0
+    out
+  },
+  progress = FALSE)
+
+coverage_fkt_all <- t(coverage_fkt_all)
+colnames(coverage_fkt_all) <- sc$classMapping$class
+
+urban_str_fkt_all <- as.data.frame(coverage_fkt_all) %>%
+  mutate(
+    fkt = fkt_all$ADM4_EN,
+    area = fkt_all$area1,
+    sum = water + green + industrial + urban,
+    p_water = water/sum,
+    p_green = green/sum,
+    p_industrial = industrial / sum,
+    p_urban = urban/sum,
+    sum_check = p_water + p_green + p_urban + p_industrial)
+
+View(urban_str_fkt_all)
+
+write.csv(urban_str_fkt_all, file = "urban_str_all_fkt.csv")
+
+fkt_all
+```
+
+# Create PCA-based urban indexes
+
+Based on proportions of urban classes across the whole CUA, we calculate the principal component analysis to introduce index 1 and 2, corresponding to PC1 and 2, thus decreasing the number of future covariates for the model and avoiding collinearity between variables. It turns out that PC1 explains 60% of the variability, which is nice.
+
+```{r}
+
+# Run PCA 
+pca_result <- prcomp(urban_str_fkt_all[, c("p_green", "p_urban", "p_industrial", "p_water")], center = TRUE, scale. = TRUE)
+
+# Explained variance; first two components
+var_explained <- (pca_result$sdev^2) / sum(pca_result$sdev^2) * 100
+var_explained[1:2]
+
+scores <- predict(pca_result, newdata = urban_str_fkt_all[, c("p_green","p_urban","p_industrial","p_water")])
+
+#we create "raw" form and scaled form of the index, for different purposes downstream
+urban_str_fkt_all <- urban_str_fkt_all %>% 
+  mutate(
+    urban_index1 = scores[,1],
+    urban_index2 = scores[,2],
+    index1_s = scale(urban_index1),
+    index2_s = scale(urban_index2))
+
+# Save raw PCA scores for all fokontany
+write.csv(urban_str_fkt_all, file = "urban_str_all_fkt.csv", row.names = FALSE)
+
+View(urban_str_fkt_all)
+
+
+```
+
+# Compile all covariates available per fokontany
+
+```{r}
+# load demographic data acquired from QGIS and in the field
+demography_fkt <- read_csv("Demography_fkt_counted.csv")
+
+# use the PCA1 and PCA2 scores above to calculate urban indexes specific for the areas counted 
+scores_fkt_counted <- predict(pca_result, newdata = urban_str_fkt[, c("p_green","p_urban","p_industrial","p_water")])
+
+# Attach counted-site PCA indexes directly to the counted urban table
+urban_str_fkt <- urban_str_fkt %>%
+  mutate(
+    index1_raw = as.numeric(scores_fkt_counted[,1]),
+    index2_raw = as.numeric(scores_fkt_counted[,2]),
+    index1 = as.numeric(scale(scores_fkt_counted[,1])),
+    index2 = as.numeric(scale(scores_fkt_counted[,2]))
+  )
+
+sitecovs_fkt <- left_join(demography_fkt, urban_str_fkt, by = "fkt") %>%
+  mutate(
+         pop_dens_s = scale(population / area_admin), #adding human population density
+         area_s = scale(area_real),
+         pcc_s = scale(pcc_total),
+         length_s = scale(length))
+
+View(sitecovs_fkt)
+write.csv(sitecovs_fkt, file = "sitecovs_fkt.csv")
+```
+
+# Compile all covariates available per path
+
+note that some variables are only known at fokontany level, so transects are nested per fokontany in some covariates
+
+```{r}
+char_transect <- read_csv("Transect_counted.csv") %>% left_join(urban_str_transect, by = "id_transect")
+
+scores_transect_counted <- predict(pca_result, newdata = urban_str_transect[, c("p_green","p_urban","p_industrial","p_water")])
+
+sitecovs_transect <- left_join(char_transect, demography_fkt, by = "fkt") %>%
+  mutate(index1 = scale(scores_transect_counted[,1]),
+         index2 = scale(scores_transect_counted[,2]),
+         pop_dens_s = scale(population / area_admin), #adding human population density
+         area_s = scale(area_real),
+         pcc_s = scale(pcc_total),
+         length_s = scale(length))
+
+View(sitecovs_transect)
+write.csv(sitecovs_transect, file = "sitecovs_transect.csv")
+```
+
+# Spatial data exploration; dogs per urban class
+
+```{r}
+dogs <- st_read("Dogs5days.shp") %>% st_transform(crs(layer_cls))
+
+# Both packages are loaded so we must be explicit
+layer_cls_terra <- terra::rast(layer_cls)
+
+# extract raster class value at each dog GPS point
+ex <- terra::extract(layer_cls_terra, terra::vect(dogs), ID = FALSE)  
+
+# attach class values to points 
+dogs$class <- ex[,1]
+
+# count by class
+dogs_per_zone <- dogs %>%
+  st_set_geometry(NULL) %>%     # drop geometry to make a data frame
+  group_by(class) %>%
+  summarise(n = n()) %>%
+  arrange(class) %>%
+  mutate(class = as.factor(recode(class,
+    `1` = "green",
+    `2` = "industrial",
+    `3` = "urban", 
+    `4` = "water")))
+
+dogs_per_zone$area_zone <- as.numeric(c(sum(sitecovs_fkt$urban), sum(sitecovs_fkt$industrial),sum(sitecovs_fkt$green), sum(sitecovs_fkt$water), "NA"))
+
+dogs_per_zone$density_zone <- (dogs_per_zone$n) / (dogs_per_zone$area_zone) *2000 #per ha but divided by 5 (because all 5 repetitions are included)
+
+print(dogs_per_zone)
+
+
+#test of zone effect
+
+m <- glm(n ~ class + offset(log(area_zone)), family = poisson, data = dogs_per_zone)
+
+anova(m, test = "Chisq")
+
+summary(m)
+
+em <- emm <- emmeans(m, "class", type = "response")
+summary(emm)  
+pairs(emm, type = "response", adjust = "fdr")
+
+plot(emm, comparisons = TRUE, horizontal = TRUE,
+     main = "Estimated dog rate per unit area (95% CI)")
+
+```

@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Katerina">
+
+<title>Covariates data preparation dogs Tana</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/clipboard/clipboard.min.js"></script>
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/popper.min.js"></script>
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/anchor.min.js"></script>
+<link href="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="2_Covariates data preparation dogs Tana - Copy_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="2_Covariates data preparation dogs Tana - Copy_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="2_Covariates data preparation dogs Tana - Copy_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="2_Covariates data preparation dogs Tana - Copy_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Covariates data preparation dogs Tana</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Katerina </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RStoolbox)    </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>This is version 1.0.2.2 of RStoolbox</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.5.2     ✔ tibble    3.3.0
+✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+✔ purrr     1.0.4     </code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)         </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Linking to GEOS 3.13.1, GDAL 3.11.4, PROJ 9.7.0; sf_use_s2() is TRUE</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(randomForest)   </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>randomForest 4.7-1.2
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: 'randomForest'
+
+The following object is masked from 'package:dplyr':
+
+    combine
+
+The following object is masked from 'package:ggplot2':
+
+    margin</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(terra)         </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>terra 1.8.70
+
+Attaching package: 'terra'
+
+The following object is masked from 'package:tidyr':
+
+    extract</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(exactextractr) </span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(units)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>udunits database from C:/Users/USER/AppData/Local/R/win-library/4.5/units/share/udunits/udunits2.xml</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pls)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'pls'
+
+The following object is masked from 'package:stats':
+
+    loadings</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(raster)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: sp
+
+Attaching package: 'raster'
+
+The following object is masked from 'package:dplyr':
+
+    select</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(emmeans)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Welcome to emmeans.
+Caution: You lose important information if you filter this package's results.
+See '? untidy'</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(factoextra)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa</code></pre>
+</div>
+</div>
+<section id="supervised-classification-of-cua-satellite-image" class="level1">
+<h1>Supervised classification of CUA satellite image</h1>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#load satelite image</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>tif <span class="ot">&lt;-</span> <span class="fu">brick</span>(<span class="st">"CUA_ras.tif"</span>) <span class="sc">%&gt;%</span> <span class="fu">setMinMax</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: [minmax] min and max values not available for all layers. See
+'setMinMax' or 'global'</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load training polygons and align CRS to the raster</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>train <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"training_cls4.shp"</span>, <span class="at">quiet =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">class =</span> <span class="fu">as.factor</span>(class)) <span class="sc">%&gt;%</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="at">crs =</span> sf<span class="sc">::</span><span class="fu">st_crs</span>(raster<span class="sc">::</span><span class="fu">crs</span>(tif)))</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co">#supervised classification</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>sc <span class="ot">&lt;-</span> <span class="fu">superClass</span>(tif, <span class="at">trainData =</span> train, <span class="at">responseCol =</span> <span class="st">"class"</span>, <span class="at">model =</span> <span class="st">"rf"</span>) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Some trainData (1/21) do not overlap with img</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in superClass(tif, trainData = train, responseCol = "class", model =
+"rf"): Samples from CUA_ras_4 contain only one value. The variable will be
+omitted from model training.</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>note: only 2 unique complexity parameters in default grid. Truncating the grid to 2 .</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: lattice</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'caret'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:pls':
+
+    R2</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:purrr':
+
+    lift</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+|---------|---------|---------|---------|
+=========================================
+                                          </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co">#check it out and save in file</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(sc<span class="sc">$</span>map)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="2_Covariates-data-preparation-dogs-Tana---Copy_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>sc<span class="sc">$</span>classMapping</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  classID      class
+1       1      green
+2       2 industrial
+3       3      urban
+4       4      water</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">writeRaster</span>(sc<span class="sc">$</span>map, <span class="st">"classified_CUA.tif"</span>, <span class="at">overwrite =</span> <span class="cn">TRUE</span>) <span class="co">#file not saved in github, too large</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tif)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="2_Covariates-data-preparation-dogs-Tana---Copy_files/figure-html/unnamed-chunk-2-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="calculate-proportions-of-urban-classes-per-fokontany" class="level1">
+<h1>Calculate proportions of urban classes per fokontany</h1>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load files; classified raster layer, polygons counted</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>layer_cls <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">raster</span>(sc<span class="sc">$</span>map) <span class="co">#or we can load classified tif, if sc is no more in the environment </span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>fkt_counted <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"Poly_fkt_counted_lar.shp"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="at">crs =</span> sf<span class="sc">::</span><span class="fu">st_crs</span>(raster<span class="sc">::</span><span class="fu">crs</span>(layer_cls))) <span class="sc">%&gt;%</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">tolower</span>(Name))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `Poly_fkt_counted_lar' from data source 
+  `C:\Users\USER\OneDrive\Cirad\Mada\FSPI Rage\Comptages\Extrapolation\Comptages\Poly_fkt_counted_lar.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 19 features and 15 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 761573 ymin: 7902522 xmax: 770902.6 ymax: 7913072
+Projected CRS: WGS 84 / UTM zone 38S</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># superpose the layer and polygons and compute class-wise coverage directly</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>coverage_fkt_counted <span class="ot">&lt;-</span> <span class="fu">exact_extract</span>(</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  layer_cls,</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>  fkt_counted,</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(values, coverage_fraction, ...) {</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tapply</span>(coverage_fraction, values, sum, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>  },</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>coverage_fkt_counted</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       [,1]       [,2]       [,3]       [,4]      [,5]        [,6]       [,7]
+1 104372.11  65899.290  3402.7235  7769.3776  69673.97  18506.5788  65552.310
+2  52595.86  14719.914  9254.1083  7055.4608  37609.95  15574.0884  54029.829
+3 231467.71 105488.746 48988.8671 36692.0556 158260.29 100235.7852 240512.021
+4   9756.86   2383.054   101.2956   456.9498   5284.02    873.5444   9015.238
+       [,8]      [,9]      [,10]      [,11]      [,12]     [,13]      [,14]
+1 27555.219 52440.775  95038.149  6829.1921 102497.588  62228.88 14425.8271
+2 13007.036 22192.857  60096.909 10130.7659  38893.433  35226.86  9400.7291
+3 80604.191 67583.370 310387.002 62469.2202 127715.144 184410.29 49662.5558
+4  2484.925  3701.436   3766.502   151.6864   4920.234   2242.91   884.2709
+       [,15]       [,16]      [,17]     [,18]      [,19]
+1  30468.559  4569.61372  50359.816 44458.660  59816.126
+2  18005.023  6845.69555  26343.399 19383.938  49371.511
+3 119045.852 50229.19101 105535.984 87849.515 188281.478
+4   1053.626    28.36647   2362.128  4047.515   3006.141</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>coverage_fkt_counted <span class="ot">&lt;-</span> <span class="fu">t</span>(coverage_fkt_counted) <span class="co">#flipping the matrix</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="co">#if i want to approximate real area in meters (but CAVE, there is a boundary error, it gives slightly higher values than QGIS)</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>coverage_fkt_counted <span class="ot">&lt;-</span> coverage_fkt_counted <span class="sc">*</span> (<span class="fu">prod</span>(<span class="fu">res</span>(layer_cls)))</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(coverage_fkt_counted) <span class="ot">&lt;-</span> sc<span class="sc">$</span>classMapping<span class="sc">$</span>class</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="co">#arrange it into a neat dataframe</span></span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>urban_str_fkt <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(coverage_fkt_counted) <span class="sc">%&gt;%</span></span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">fkt =</span> fkt_counted<span class="sc">$</span>Name,</span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">id_fkt =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">19</span>,</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum =</span> water <span class="sc">+</span> green <span class="sc">+</span> industrial <span class="sc">+</span> urban,</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_water =</span> water<span class="sc">/</span>sum,</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_green =</span> green<span class="sc">/</span>sum,</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_industrial =</span> industrial <span class="sc">/</span> sum,</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_urban =</span> urban<span class="sc">/</span>sum,</span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_check =</span> p_water <span class="sc">+</span> p_green <span class="sc">+</span> p_industrial <span class="sc">+</span> p_urban)</span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(urban_str_fkt)</span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(urban_str_fkt, <span class="at">file =</span> <span class="st">"urban_str_fkt.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="calculate-proportions-of-urban-classes-per-patch" class="level1">
+<h1>Calculate proportions of urban classes per patch</h1>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>transect_counted <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"Transect_counted.shp"</span>)<span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="at">crs =</span> <span class="fu">crs</span>(layer_cls)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">tolower</span>(Name))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `Transect_counted' from data source 
+  `C:\Users\USER\OneDrive\Cirad\Mada\FSPI Rage\Comptages\Extrapolation\Comptages\Transect_counted.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 102 features and 14 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 761597.9 ymin: 7902547 xmax: 770877.7 ymax: 7913047
+Projected CRS: WGS 84 / UTM zone 38S</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co"># superpose the layer and the polygons and count per polygon coverage </span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>coverage_transect_counted <span class="ot">&lt;-</span> <span class="fu">exact_extract</span>(</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>  layer_cls,</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>  transect_counted,</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(values, coverage_fraction, ...) {</span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>    values <span class="ot">&lt;-</span> <span class="fu">factor</span>(values, <span class="at">levels =</span> sc<span class="sc">$</span>classMapping<span class="sc">$</span>classID)</span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a>    out <span class="ot">&lt;-</span> <span class="fu">tapply</span>(coverage_fraction, values, sum, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a>    out[<span class="fu">is.na</span>(out)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>    out</span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a>  },</span>
+<span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb44-12"><a href="#cb44-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-13"><a href="#cb44-13" aria-hidden="true" tabindex="-1"></a>coverage_transect_counted <span class="ot">&lt;-</span> <span class="fu">t</span>(coverage_transect_counted)</span>
+<span id="cb44-14"><a href="#cb44-14" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(coverage_transect_counted) <span class="ot">&lt;-</span> sc<span class="sc">$</span>classMapping<span class="sc">$</span>class</span>
+<span id="cb44-15"><a href="#cb44-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-16"><a href="#cb44-16" aria-hidden="true" tabindex="-1"></a>urban_str_transect <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(coverage_transect_counted) <span class="sc">%&gt;%</span></span>
+<span id="cb44-17"><a href="#cb44-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb44-18"><a href="#cb44-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">name_transect =</span> transect_counted<span class="sc">$</span>Name,</span>
+<span id="cb44-19"><a href="#cb44-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">id_transect =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">102</span>,</span>
+<span id="cb44-20"><a href="#cb44-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum =</span> water <span class="sc">+</span> green <span class="sc">+</span> industrial <span class="sc">+</span> urban,</span>
+<span id="cb44-21"><a href="#cb44-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_water =</span> water<span class="sc">/</span>sum,</span>
+<span id="cb44-22"><a href="#cb44-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_green =</span> green<span class="sc">/</span>sum,</span>
+<span id="cb44-23"><a href="#cb44-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_industrial =</span> industrial <span class="sc">/</span> sum,</span>
+<span id="cb44-24"><a href="#cb44-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_urban =</span> urban<span class="sc">/</span>sum,</span>
+<span id="cb44-25"><a href="#cb44-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_check =</span> p_water <span class="sc">+</span> p_green <span class="sc">+</span> p_industrial <span class="sc">+</span> p_urban)</span>
+<span id="cb44-26"><a href="#cb44-26" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(urban_str_transect)</span>
+<span id="cb44-27"><a href="#cb44-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-28"><a href="#cb44-28" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(urban_str_transect, <span class="at">file =</span> <span class="st">"urban_str_transect.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="calculate-proportions-of-urban-classes-in-all-fokontany" class="level1">
+<h1>Calculate proportions of urban classes in all fokontany</h1>
+<p>This is to see what the proportions of different urban classes are doing. Please note that the sampled fokontany are not a subset of the total 192 fokontany; they are QGIS-created polygons surrounding the paths counted. Sometimes they are almost equal to administrative polygons, other times they are very different. The purpose of creating sampled fokontany polygons was to stay true to the real area that was counted (that is why, in the sitecovs_fkt, we have “area_admin” and area_real”.)</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co">#load shp of all fokontany of the CUA (obtained from OCHA)</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>fkt_all <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"CUA_FKT.shp"</span>) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="fu">crs</span>(layer_cls)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">tolower</span>(ADM4_EN))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `CUA_FKT' from data source 
+  `C:\Users\USER\OneDrive\Cirad\Mada\FSPI Rage\Comptages\Extrapolation\Comptages\CUA_FKT.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 192 features and 25 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 47.46983 ymin: -18.95588 xmax: 47.57708 ymax: -18.83861
+Geodetic CRS:  WGS 84</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># superpose the layer and the polygons and count per polygon coverage </span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>coverage_fkt_all <span class="ot">&lt;-</span> <span class="fu">exact_extract</span>(</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  layer_cls,</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  fkt_all,</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(values, coverage_fraction, ...) {</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>    values <span class="ot">&lt;-</span> <span class="fu">factor</span>(values, <span class="at">levels =</span> sc<span class="sc">$</span>classMapping<span class="sc">$</span>classID)</span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>    out <span class="ot">&lt;-</span> <span class="fu">tapply</span>(coverage_fraction, values, sum, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>    out[<span class="fu">is.na</span>(out)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>    out</span>
+<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a>  },</span>
+<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">progress =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>coverage_fkt_all <span class="ot">&lt;-</span> <span class="fu">t</span>(coverage_fkt_all)</span>
+<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(coverage_fkt_all) <span class="ot">&lt;-</span> sc<span class="sc">$</span>classMapping<span class="sc">$</span>class</span>
+<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a>urban_str_fkt_all <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(coverage_fkt_all) <span class="sc">%&gt;%</span></span>
+<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb47-18"><a href="#cb47-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">fkt =</span> fkt_all<span class="sc">$</span>ADM4_EN,</span>
+<span id="cb47-19"><a href="#cb47-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">area =</span> fkt_all<span class="sc">$</span>area1,</span>
+<span id="cb47-20"><a href="#cb47-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum =</span> water <span class="sc">+</span> green <span class="sc">+</span> industrial <span class="sc">+</span> urban,</span>
+<span id="cb47-21"><a href="#cb47-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_water =</span> water<span class="sc">/</span>sum,</span>
+<span id="cb47-22"><a href="#cb47-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_green =</span> green<span class="sc">/</span>sum,</span>
+<span id="cb47-23"><a href="#cb47-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_industrial =</span> industrial <span class="sc">/</span> sum,</span>
+<span id="cb47-24"><a href="#cb47-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_urban =</span> urban<span class="sc">/</span>sum,</span>
+<span id="cb47-25"><a href="#cb47-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_check =</span> p_water <span class="sc">+</span> p_green <span class="sc">+</span> p_urban <span class="sc">+</span> p_industrial)</span>
+<span id="cb47-26"><a href="#cb47-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-27"><a href="#cb47-27" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(urban_str_fkt_all)</span>
+<span id="cb47-28"><a href="#cb47-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-29"><a href="#cb47-29" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(urban_str_fkt_all, <span class="at">file =</span> <span class="st">"urban_str_all_fkt.csv"</span>)</span>
+<span id="cb47-30"><a href="#cb47-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-31"><a href="#cb47-31" aria-hidden="true" tabindex="-1"></a>fkt_all</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Simple feature collection with 192 features and 25 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 5284317 ymin: -2149742 xmax: 5296256 ymax: -2135944
+Projected CRS: WGS 84 / Pseudo-Mercator
+First 10 features:
+   ADM0_PCODE    ADM0_EN ADM1_PCODE    ADM1_EN ADM1_TYPE  ADM2_PCODE
+1          MG Madagascar       MG11 Analamanga    Region MG11101001A
+2          MG Madagascar       MG11 Analamanga    Region MG11101001A
+3          MG Madagascar       MG11 Analamanga    Region MG11101001A
+4          MG Madagascar       MG11 Analamanga    Region MG11101001A
+5          MG Madagascar       MG11 Analamanga    Region MG11101005A
+6          MG Madagascar       MG11 Analamanga    Region MG11101001A
+7          MG Madagascar       MG11 Analamanga    Region MG11101004A
+8          MG Madagascar       MG11 Analamanga    Region MG11101006A
+9          MG Madagascar       MG11 Analamanga    Region MG11101005A
+10         MG Madagascar       MG11 Analamanga    Region MG11101005A
+              ADM2_EN ADM2_TYPE ADM3_PCODE            ADM3_EN ADM3_TYPE
+1  1er Arrondissement  District MG11101001 1er Arrondissement   Commune
+2  1er Arrondissement  District MG11101001 1er Arrondissement   Commune
+3  1er Arrondissement  District MG11101001 1er Arrondissement   Commune
+4  1er Arrondissement  District MG11101001 1er Arrondissement   Commune
+5   5e Arrondissement  District MG11101005  5e Arrondissement   Commune
+6  1er Arrondissement  District MG11101001 1er Arrondissement   Commune
+7   4e Arrondissement  District MG11101004  4e Arrondissement   Commune
+8   6e Arrondissement  District MG11101006  6e Arrondissement   Commune
+9   5e Arrondissement  District MG11101005  5e Arrondissement   Commune
+10  5e Arrondissement  District MG11101005  5e Arrondissement   Commune
+      ADM4_PCODE                  ADM4_EN ADM4_TYPE PROV_CODE_   OLD_PROVIN
+1  MG11101001031  67ha Afovoany Andrefana Fokontany          1 Antananarivo
+2  MG11101001032              67ha Atsimo Fokontany          1 Antananarivo
+3  MG11101001033  67ha Avaratra Andrefana Fokontany          1 Antananarivo
+4  MG11101001034 67ha Avaratra Atsinanana Fokontany          1 Antananarivo
+5  MG11101005005      Alarobia Amboniloha Fokontany          1 Antananarivo
+6  MG11101001002         Ambalavao Isotry Fokontany          1 Antananarivo
+7  MG11101004014     Ambanin'ampamarinana Fokontany          1 Antananarivo
+8  MG11101006008          Ambaravarankazo Fokontany          1 Antananarivo
+9  MG11101005010                 Ambatobe Fokontany          1 Antananarivo
+10 MG11101005022           Ambatokaranana Fokontany          1 Antananarivo
+                                  PROV_TYPE
+1  Old Provinces/Faritany dissolved in 2007
+2  Old Provinces/Faritany dissolved in 2007
+3  Old Provinces/Faritany dissolved in 2007
+4  Old Provinces/Faritany dissolved in 2007
+5  Old Provinces/Faritany dissolved in 2007
+6  Old Provinces/Faritany dissolved in 2007
+7  Old Provinces/Faritany dissolved in 2007
+8  Old Provinces/Faritany dissolved in 2007
+9  Old Provinces/Faritany dissolved in 2007
+10 Old Provinces/Faritany dissolved in 2007
+                                                           NOTES
+1  Previous district name is Antananarivo Renivohitra (MDG11101)
+2  Previous district name is Antananarivo Renivohitra (MDG11101)
+3  Previous district name is Antananarivo Renivohitra (MDG11101)
+4  Previous district name is Antananarivo Renivohitra (MDG11101)
+5  Previous district name is Antananarivo Renivohitra (MDG11101)
+6  Previous district name is Antananarivo Renivohitra (MDG11101)
+7  Previous district name is Antananarivo Renivohitra (MDG11101)
+8  Previous district name is Antananarivo Renivohitra (MDG11101)
+9  Previous district name is Antananarivo Renivohitra (MDG11101)
+10 Previous district name is Antananarivo Renivohitra (MDG11101)
+                                                                                                                                                                                                                           SOURCE
+1  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+2  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+3  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+4  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+5  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+6  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+7  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+8  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+9  Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+10 Note that Communes (admin 3) have become the District (admin 2) level in the old Antananarivo- Renivohitra district.  Therefore district codes have been made the same (with an 'A' suffix) as the Commune Codes for Tana 1-6.
+   num area      area1 Classe Comptage area.km                       geometry
+1   42    0   76214.54   &lt;NA&gt;    FALSE       0 MULTIPOLYGON (((5288538 -21...
+2   68    0  136442.48      M       NA       0 MULTIPOLYGON (((5288652 -21...
+3   10    0  151180.55   &lt;NA&gt;       NA       0 MULTIPOLYGON (((5288737 -21...
+4   11    0  199888.37   &lt;NA&gt;       NA       0 MULTIPOLYGON (((5288795 -21...
+5  141    1 1049212.23      M       NA       1 MULTIPOLYGON (((5290227 -21...
+6   75    0   78944.56   &lt;NA&gt;       NA       0 MULTIPOLYGON (((5289505 -21...
+7   25    0   77804.18   &lt;NA&gt;       NA       0 MULTIPOLYGON (((5291099 -21...
+8  190    1 1127585.40   &lt;NA&gt;       NA       1 MULTIPOLYGON (((5288688 -21...
+9  160    1 1448999.60   &lt;NA&gt;       NA       1 MULTIPOLYGON (((5293720 -21...
+10 153    0  117040.83   &lt;NA&gt;       NA       0 MULTIPOLYGON (((5293233 -21...</code></pre>
+</div>
+</div>
+</section>
+<section id="create-pca-based-urban-indexes" class="level1">
+<h1>Create PCA-based urban indexes</h1>
+<p>Based on proportions of urban classes across the whole CUA, we calculate the principal component analysis to introduce index 1 and 2, corresponding to PC1 and 2, thus decreasing the number of future covariates for the model and avoiding collinearity between variables. It turns out that PC1 explains 60% of the variability, which is nice.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run PCA </span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>pca_result <span class="ot">&lt;-</span> <span class="fu">prcomp</span>(urban_str_fkt_all[, <span class="fu">c</span>(<span class="st">"p_green"</span>, <span class="st">"p_urban"</span>, <span class="st">"p_industrial"</span>, <span class="st">"p_water"</span>)], <span class="at">center =</span> <span class="cn">TRUE</span>, <span class="at">scale. =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Explained variance; first two components</span></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>var_explained <span class="ot">&lt;-</span> (pca_result<span class="sc">$</span>sdev<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="fu">sum</span>(pca_result<span class="sc">$</span>sdev<span class="sc">^</span><span class="dv">2</span>) <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>var_explained[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 61.04198 20.77710</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>scores <span class="ot">&lt;-</span> <span class="fu">predict</span>(pca_result, <span class="at">newdata =</span> urban_str_fkt_all[, <span class="fu">c</span>(<span class="st">"p_green"</span>,<span class="st">"p_urban"</span>,<span class="st">"p_industrial"</span>,<span class="st">"p_water"</span>)])</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a><span class="co">#we create "raw" form and scaled form of the index, for different purposes downstream</span></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>urban_str_fkt_all <span class="ot">&lt;-</span> urban_str_fkt_all <span class="sc">%&gt;%</span> </span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">urban_index1 =</span> scores[,<span class="dv">1</span>],</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">urban_index2 =</span> scores[,<span class="dv">2</span>],</span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">index1_s =</span> <span class="fu">scale</span>(urban_index1),</span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">index2_s =</span> <span class="fu">scale</span>(urban_index2))</span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Save raw PCA scores for all fokontany</span></span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(urban_str_fkt_all, <span class="at">file =</span> <span class="st">"urban_str_all_fkt.csv"</span>, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(urban_str_fkt_all)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="compile-all-covariates-available-per-fokontany" class="level1">
+<h1>Compile all covariates available per fokontany</h1>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load demographic data acquired from QGIS and in the field</span></span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>demography_fkt <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"Demography_fkt_counted.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 19 Columns: 10
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (2): fkt, Seclasse
+dbl (8): id_fkt, length, area_real, area_admin, percentage covared, pcc_bac,...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use the PCA1 and PCA2 scores above to calculate urban indexes specific for the areas counted </span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>scores_fkt_counted <span class="ot">&lt;-</span> <span class="fu">predict</span>(pca_result, <span class="at">newdata =</span> urban_str_fkt[, <span class="fu">c</span>(<span class="st">"p_green"</span>,<span class="st">"p_urban"</span>,<span class="st">"p_industrial"</span>,<span class="st">"p_water"</span>)])</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Attach counted-site PCA indexes directly to the counted urban table</span></span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>urban_str_fkt <span class="ot">&lt;-</span> urban_str_fkt <span class="sc">%&gt;%</span></span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">index1_raw =</span> <span class="fu">as.numeric</span>(scores_fkt_counted[,<span class="dv">1</span>]),</span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">index2_raw =</span> <span class="fu">as.numeric</span>(scores_fkt_counted[,<span class="dv">2</span>]),</span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">index1 =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(scores_fkt_counted[,<span class="dv">1</span>])),</span>
+<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">index2 =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(scores_fkt_counted[,<span class="dv">2</span>]))</span>
+<span id="cb54-11"><a href="#cb54-11" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb54-12"><a href="#cb54-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-13"><a href="#cb54-13" aria-hidden="true" tabindex="-1"></a>sitecovs_fkt <span class="ot">&lt;-</span> <span class="fu">left_join</span>(demography_fkt, urban_str_fkt, <span class="at">by =</span> <span class="st">"fkt"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb54-14"><a href="#cb54-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb54-15"><a href="#cb54-15" aria-hidden="true" tabindex="-1"></a>         <span class="at">pop_dens_s =</span> <span class="fu">scale</span>(population <span class="sc">/</span> area_admin), <span class="co">#adding human population density</span></span>
+<span id="cb54-16"><a href="#cb54-16" aria-hidden="true" tabindex="-1"></a>         <span class="at">area_s =</span> <span class="fu">scale</span>(area_real),</span>
+<span id="cb54-17"><a href="#cb54-17" aria-hidden="true" tabindex="-1"></a>         <span class="at">pcc_s =</span> <span class="fu">scale</span>(pcc_total),</span>
+<span id="cb54-18"><a href="#cb54-18" aria-hidden="true" tabindex="-1"></a>         <span class="at">length_s =</span> <span class="fu">scale</span>(length))</span>
+<span id="cb54-19"><a href="#cb54-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-20"><a href="#cb54-20" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(sitecovs_fkt)</span>
+<span id="cb54-21"><a href="#cb54-21" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(sitecovs_fkt, <span class="at">file =</span> <span class="st">"sitecovs_fkt.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="compile-all-covariates-available-per-path" class="level1">
+<h1>Compile all covariates available per path</h1>
+<p>note that some variables are only known at fokontany level, so transects are nested per fokontany in some covariates</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>char_transect <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"Transect_counted.csv"</span>) <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(urban_str_transect, <span class="at">by =</span> <span class="st">"id_transect"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 102 Columns: 6
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (2): Name, fkt
+dbl (4): fid, id_transect, tr_lengh, tr_area
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>scores_transect_counted <span class="ot">&lt;-</span> <span class="fu">predict</span>(pca_result, <span class="at">newdata =</span> urban_str_transect[, <span class="fu">c</span>(<span class="st">"p_green"</span>,<span class="st">"p_urban"</span>,<span class="st">"p_industrial"</span>,<span class="st">"p_water"</span>)])</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>sitecovs_transect <span class="ot">&lt;-</span> <span class="fu">left_join</span>(char_transect, demography_fkt, <span class="at">by =</span> <span class="st">"fkt"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">index1 =</span> <span class="fu">scale</span>(scores_transect_counted[,<span class="dv">1</span>]),</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">index2 =</span> <span class="fu">scale</span>(scores_transect_counted[,<span class="dv">2</span>]),</span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">pop_dens_s =</span> <span class="fu">scale</span>(population <span class="sc">/</span> area_admin), <span class="co">#adding human population density</span></span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a>         <span class="at">area_s =</span> <span class="fu">scale</span>(area_real),</span>
+<span id="cb57-8"><a href="#cb57-8" aria-hidden="true" tabindex="-1"></a>         <span class="at">pcc_s =</span> <span class="fu">scale</span>(pcc_total),</span>
+<span id="cb57-9"><a href="#cb57-9" aria-hidden="true" tabindex="-1"></a>         <span class="at">length_s =</span> <span class="fu">scale</span>(length))</span>
+<span id="cb57-10"><a href="#cb57-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-11"><a href="#cb57-11" aria-hidden="true" tabindex="-1"></a><span class="fu">View</span>(sitecovs_transect)</span>
+<span id="cb57-12"><a href="#cb57-12" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(sitecovs_transect, <span class="at">file =</span> <span class="st">"sitecovs_transect.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="spatial-data-exploration-dogs-per-urban-class" class="level1">
+<h1>Spatial data exploration; dogs per urban class</h1>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>dogs <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="st">"Dogs5days.shp"</span>) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="fu">crs</span>(layer_cls))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `Dogs5days' from data source 
+  `C:\Users\USER\OneDrive\Cirad\Mada\FSPI Rage\Comptages\Extrapolation\Comptages\Dogs5days.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 5635 features and 5 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: 0 ymin: -19.20664 xmax: 47.75053 ymax: 0
+Geodetic CRS:  WGS 84</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Both packages are loaded so we must be explicit</span></span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>layer_cls_terra <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">rast</span>(layer_cls)</span>
+<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a><span class="co"># extract raster class value at each dog GPS point</span></span>
+<span id="cb60-5"><a href="#cb60-5" aria-hidden="true" tabindex="-1"></a>ex <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">extract</span>(layer_cls_terra, terra<span class="sc">::</span><span class="fu">vect</span>(dogs), <span class="at">ID =</span> <span class="cn">FALSE</span>)  </span>
+<span id="cb60-6"><a href="#cb60-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-7"><a href="#cb60-7" aria-hidden="true" tabindex="-1"></a><span class="co"># attach class values to points </span></span>
+<span id="cb60-8"><a href="#cb60-8" aria-hidden="true" tabindex="-1"></a>dogs<span class="sc">$</span>class <span class="ot">&lt;-</span> ex[,<span class="dv">1</span>]</span>
+<span id="cb60-9"><a href="#cb60-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-10"><a href="#cb60-10" aria-hidden="true" tabindex="-1"></a><span class="co"># count by class</span></span>
+<span id="cb60-11"><a href="#cb60-11" aria-hidden="true" tabindex="-1"></a>dogs_per_zone <span class="ot">&lt;-</span> dogs <span class="sc">%&gt;%</span></span>
+<span id="cb60-12"><a href="#cb60-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_set_geometry</span>(<span class="cn">NULL</span>) <span class="sc">%&gt;%</span>     <span class="co"># drop geometry to make a data frame</span></span>
+<span id="cb60-13"><a href="#cb60-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(class) <span class="sc">%&gt;%</span></span>
+<span id="cb60-14"><a href="#cb60-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb60-15"><a href="#cb60-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(class) <span class="sc">%&gt;%</span></span>
+<span id="cb60-16"><a href="#cb60-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">class =</span> <span class="fu">as.factor</span>(<span class="fu">recode</span>(class,</span>
+<span id="cb60-17"><a href="#cb60-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">1</span><span class="st">`</span> <span class="ot">=</span> <span class="st">"green"</span>,</span>
+<span id="cb60-18"><a href="#cb60-18" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">2</span><span class="st">`</span> <span class="ot">=</span> <span class="st">"industrial"</span>,</span>
+<span id="cb60-19"><a href="#cb60-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">3</span><span class="st">`</span> <span class="ot">=</span> <span class="st">"urban"</span>, </span>
+<span id="cb60-20"><a href="#cb60-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">4</span><span class="st">`</span> <span class="ot">=</span> <span class="st">"water"</span>)))</span>
+<span id="cb60-21"><a href="#cb60-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-22"><a href="#cb60-22" aria-hidden="true" tabindex="-1"></a>dogs_per_zone<span class="sc">$</span>area_zone <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">c</span>(<span class="fu">sum</span>(sitecovs_fkt<span class="sc">$</span>urban), <span class="fu">sum</span>(sitecovs_fkt<span class="sc">$</span>industrial),<span class="fu">sum</span>(sitecovs_fkt<span class="sc">$</span>green), <span class="fu">sum</span>(sitecovs_fkt<span class="sc">$</span>water), <span class="st">"NA"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: NAs introduced by coercion</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>dogs_per_zone<span class="sc">$</span>density_zone <span class="ot">&lt;-</span> (dogs_per_zone<span class="sc">$</span>n) <span class="sc">/</span> (dogs_per_zone<span class="sc">$</span>area_zone) <span class="sc">*</span><span class="dv">2000</span> <span class="co">#per ha but divided by 5 (because all 5 repetitions are included)</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(dogs_per_zone)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 5 × 4
+  class          n area_zone density_zone
+  &lt;fct&gt;      &lt;int&gt;     &lt;dbl&gt;        &lt;dbl&gt;
+1 green        493  7328426.        0.135
+2 industrial   866  1554835.        1.11 
+3 urban       4236  2756195.        3.07 
+4 water         23   175853.        0.262
+5 &lt;NA&gt;          17       NA        NA    </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="co">#test of zone effect</span></span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> <span class="fu">glm</span>(n <span class="sc">~</span> class <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(area_zone)), <span class="at">family =</span> poisson, <span class="at">data =</span> dogs_per_zone)</span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(m, <span class="at">test =</span> <span class="st">"Chisq"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Deviance Table
+
+Model: poisson, link: log
+
+Response: n
+
+Terms added sequentially (first to last)
+
+      Df Deviance Resid. Df Resid. Dev  Pr(&gt;Chi)    
+NULL                      3     8225.6              
+class  3   8225.6         0        0.0 &lt; 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(m)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = n ~ class + offset(log(area_zone)), family = poisson, 
+    data = dogs_per_zone)
+
+Coefficients:
+                Estimate Std. Error  z value Pr(&gt;|z|)    
+(Intercept)     -9.60676    0.04504 -213.305  &lt; 2e-16 ***
+classindustrial  2.11377    0.05642   37.465  &lt; 2e-16 ***
+classurban       3.12878    0.04759   65.749  &lt; 2e-16 ***
+classwater       0.66485    0.21332    3.117  0.00183 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance:  8.2256e+03  on 3  degrees of freedom
+Residual deviance: -2.7267e-13  on 0  degrees of freedom
+  (1 observation deleted due to missingness)
+AIC: 39.811
+
+Number of Fisher Scoring iterations: 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>em <span class="ot">&lt;-</span> emm <span class="ot">&lt;-</span> <span class="fu">emmeans</span>(m, <span class="st">"class"</span>, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(emm)  </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> class      rate    SE  df asymp.LCL asymp.UCL
+ green       199  8.95 Inf       182       217
+ industrial 1645 55.90 Inf      1539      1759
+ urban      4540 69.80 Inf      4405      4679
+ water       386 80.60 Inf       257       581
+
+Confidence level used: 0.95 
+Intervals are back-transformed from the log scale </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pairs</span>(emm, <span class="at">type =</span> <span class="st">"response"</span>, <span class="at">adjust =</span> <span class="st">"fdr"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> contrast             ratio      SE  df null z.ratio p.value
+ green / industrial  0.1208 0.00681 Inf    1 -37.465  &lt;.0001
+ green / urban       0.0438 0.00208 Inf    1 -65.749  &lt;.0001
+ green / water       0.5143 0.11000 Inf    1  -3.117  0.0018
+ industrial / urban  0.3624 0.01350 Inf    1 -27.217  &lt;.0001
+ industrial / water  4.2585 0.90000 Inf    1   6.858  &lt;.0001
+ urban / water      11.7508 2.46000 Inf    1  11.785  &lt;.0001
+
+P value adjustment: fdr method for 6 tests 
+Tests are performed on the log scale </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(emm, <span class="at">comparisons =</span> <span class="cn">TRUE</span>, <span class="at">horizontal =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Estimated dog rate per unit area (95% CI)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="2_Covariates-data-preparation-dogs-Tana---Copy_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
