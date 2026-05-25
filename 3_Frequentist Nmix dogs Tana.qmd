@@ -1,0 +1,624 @@
+---
+title: "Frequentist Nmix dogs Tana"
+author: "Katerina"
+format: html
+editor: visual
+---
+
+## Packages
+
+```{r}
+library(tidyverse)
+library(unmarked) # frequentist N-mixture
+library(AICcmodavg) # multi-model selection
+library(nmixgof) # GOF evaluation
+```
+
+### Datasets to be used
+
+**obs_matrix_fkt** = matrix of counts per day (all teams confounded), using fokontany as site; created in "Count data preparation dogs Tana.qmd"
+
+**obs_matrix_transect** = matrix of counts per day, using path (transect) as site; created in "Count data preparation dogs Tana.qmd"
+
+**sitecovs_fkt** = data.frame where each row corresponds to a fokontany, with columns representing different covariates.
+
+**sitecovs_transect** = dataframe where each row corresponds to one path and covariates are ajdusted to this path. Several paths are aggregated to fokontany level, and thus some pahts share the same values of covariates, if they belong to the same fokontany.
+
+**obscovs_fkt** and **obscovs_transect** = dataframes which summarize covariates relevant to variation of detection probability. the model can accommodate visit-level variation, but in our specific case we assume constant detection across all visits. The covariates must be organized in site-major order (eg. site1-visit1, site1-visit2.... site2-visit1 etc.), regardless the lack of variation between visits. Therefore, in our case, the obscovs values will be repeated as many times as there are visits per site.
+
+Sitecovs and obscovs data frames are created by compilation of secondary data (population) , data extracted from QGIS attribute table (area, length) and data obtained by supervised urban classification (urban_index_1 and urban_index_2); all source files are provided in the GitHub repository
+
+Load data (don't if you created objects in file Count data preparation.qmd and Covariates data preparation.qmd)
+
+```{r}
+sitecovs_fkt <- read_csv("sitecovs_fkt.csv")
+sitecovs_transect <- read_csv("sitecovs_transect.csv")
+
+obs_matrix_fkt <- read_csv("obs_matrix_fkt.csv", show_col_types = FALSE) %>%
+dplyr::select(2:10) %>%
+as.matrix()
+
+obs_matrix_transect <- as.matrix(read_csv("obs_matrix_transect.csv"))
+
+sitecovs_fkt
+obs_matrix_fkt
+```
+
+### Preparation of ObsCov slot for fokontany
+
+The problem is that 18 sites were counted 5 times and 1 site 9 times. The function can handle it, but wee need to complete the dataframe with NA for obscovs for all not sites where visits 6-9 were not realized. In the end, the length of ObsCov data frame should be the same as the dimensions of count matrix (in our case 9x19 = 171).
+
+```{r}
+# subset for site with 9 visits
+obscovs_ambatomaro <- sitecovs_fkt %>% 
+  filter(fkt == "Ambatomaro") %>%
+  dplyr::select(fkt,Seclasse,index1, index2, pop_dens_s) %>%
+  slice(rep(row_number(), each = 9)) %>%
+  mutate(visit = rep(1:9))
+
+# subset for sites with 5 visits
+obscovs_other <- sitecovs_fkt %>%
+  filter(fkt != "Ambatomaro") %>%
+  dplyr::select(fkt,Seclasse,index1, index2, pop_dens_s) %>%
+  slice(rep(row_number(), each = 5)) %>% 
+  mutate(visit = rep(1:5, length.out = n()))
+
+# additional dataframe containing NAs for visits 6-9 for sites with 5 visits
+obscovs_addNA <- data.frame(
+  pop_dens_s = NA,
+  Seclasse = NA,
+  index1 = NA,
+  index2 = NA,
+  fkt = rep(setdiff(unique(sitecovs_fkt$fkt),"Ambatomaro"), each = 4),
+  visit = rep(6:9, times = 18))
+
+# bind all together and arrange
+obscovs_fkt <- bind_rows(obscovs_ambatomaro, obscovs_other, obscovs_addNA) %>% arrange(fkt,visit)
+
+obscovs_fkt # the result seem ok
+```
+
+# Models using fokontany as site
+
+### Creation of UMF
+
+```{r}
+umf_fkt <- unmarkedFramePCount(
+  y = obs_matrix_fkt,
+  siteCovs = sitecovs_fkt,
+  obsCovs = obscovs_fkt
+)
+
+summary(umf_fkt)
+```
+
+#### Model 1
+
+```{r}
+fm1 <- pcount(
+  ~ 1 ~ length_s,
+  umf_fkt,
+  K = 300,
+  mixture = "NB")
+
+plot(fitted(fm1), residuals(fm1), main = "Residuals Plot for Model 1", xlab = "fitted", ylab = "residuals")
+covDiag(fm1)
+checkParms(fm1)
+checkConv(fm1)
+
+summary(fm1)
+predict(fm1, type = "state")
+sum(predict(fm1, type = "state")$Predicted)
+sum(predict(fm1, type = "state")$lower)
+sum(predict(fm1, type = "state")$upper)
+```
+
+#### Model 2
+
+```{r}
+fm2 <- pcount(
+  ~ index1 ~ length_s,
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm2), residuals(fm2), main = "Residuals Plot for Model 2", xlab = "fitted", ylab = "residuals")
+covDiag(fm2)
+checkParms(fm2)
+checkConv(fm2)
+
+summary(fm2)
+predict(fm2, type = "state")
+sum(predict(fm2, type = "state")$Predicted)
+sum(predict(fm2, type = "state")$lower)
+sum(predict(fm2, type = "state")$upper)
+```
+
+#### Model 3
+
+```{r}
+fm3 <- pcount(
+  ~ index1 ~ length_s + (1|Seclasse),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm3), residuals(fm3), main = "Residuals Plot for Model 2", xlab = "fitted", ylab = "residuals")
+covDiag(fm3)
+checkParms(fm3)
+checkConv(fm3)
+
+summary(fm3)
+predict(fm3, type = "state")
+sum(predict(fm3, type = "state")$Predicted)
+sum(predict(fm3, type = "state")$lower)
+sum(predict(fm3, type = "state")$upper)
+```
+
+#### Model 4
+
+```{r}
+fm4 <- pcount(
+  ~ index1 ~ Seclasse + length_s + pcc_s + (1|fkt),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm4), residuals(fm4), main = "Residuals Plot for Model 4", xlab = "fitted", ylab = "residuals")
+covDiag(fm4)
+checkParms(fm4)
+checkConv(fm4)
+
+summary(fm4)
+predict(fm4, type = "state")
+sum(predict(fm4, type = "state")$Predicted)
+sum(predict(fm4, type = "state")$lower)
+sum(predict(fm4, type = "state")$upper)
+```
+
+#### Model 5
+
+```{r}
+fm5 <- pcount(
+  ~ index1 + index2 ~ Seclasse + length_s + pcc_s +(1|fkt) ,
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm5), residuals(fm5), main = "Residuals Plot for Model 5", xlab = "fitted", ylab = "residuals")
+covDiag(fm5)
+checkParms(fm5)
+checkConv(fm5)
+
+summary(fm5)
+predict(fm5, type = "state")
+sum(predict(fm5, type = "state")$Predicted)
+sum(predict(fm5, type = "state")$lower)
+sum(predict(fm5, type = "state")$upper)
+```
+
+#### Model 6
+
+```{r}
+fm6 <- pcount(
+  ~ index1 + index2 ~ pop_dens_s +length_s + (1|fkt),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm6), residuals(fm6), main = "Residuals Plot for Model 6", xlab = "fitted", ylab = "residuals")
+covDiag(fm6)
+checkParms(fm6)
+checkConv(fm6)
+
+summary(fm6)
+predict(fm6, type = "state")
+sum(predict(fm6, type = "state")$Predicted)
+sum(predict(fm6, type = "state")$lower)
+sum(predict(fm6, type = "state")$upper)
+```
+
+#### Model 7
+
+```{r}
+fm7 <- pcount(
+  ~ index1 + index2 ~ pop_dens_s +length_s + (1|Seclasse),
+  umf_fkt,
+  K = 400,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm7), residuals(fm7), main = "Residuals Plot for Model 7", xlab = "fitted", ylab = "residuals")
+covDiag(fm7)
+checkParms(fm7)
+checkConv(fm7)
+
+summary(fm7)
+predict(fm7, type = "state")
+sum(predict(fm7, type = "state")$Predicted)
+sum(predict(fm7, type = "state")$lower)
+sum(predict(fm7, type = "state")$upper)
+
+sum(predict(fm7, type = "det")$Predicted)
+sum(predict(fm7, type = "det")$lower)
+sum(predict(fm7, type = "det")$upper)
+
+```
+
+#### Model 8
+
+```{r}
+fm8 <- pcount(
+  ~ index1 ~ pop_dens_s +length_s + (1|Seclasse),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm8), residuals(fm8), main = "Residuals Plot for Model 8", xlab = "fitted", ylab = "residuals")
+covDiag(fm8)
+checkParms(fm8)
+checkConv(fm8)
+
+summary(fm8)
+predict(fm8, type = "state")
+sum(predict(fm8, type = "state")$Predicted)
+sum(predict(fm8, type = "state")$lower)
+sum(predict(fm8, type = "state")$upper)
+```
+
+#### Model 9
+
+```{r}
+fm9 <- pcount(
+  ~ index2 ~ index1 +length_s + (1|Seclasse),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm9), residuals(fm9), main = "Residuals Plot for Model 9", xlab = "fitted", ylab = "residuals")
+covDiag(fm9)
+checkParms(fm9)
+checkConv(fm9)
+
+summary(fm9)
+predict(fm9, type = "state")
+sum(predict(fm9, type = "state")$Predicted)
+sum(predict(fm9, type = "state")$lower)
+sum(predict(fm9, type = "state")$upper)
+```
+
+#### Model 10
+
+```{r}
+fm10 <- pcount(
+  ~ index1 + index2 ~ index1 +length_s + (1|Seclasse),
+  umf_fkt,
+  K = 300,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fm10), residuals(fm10), main = "Residuals Plot for Model 10", xlab = "fitted", ylab = "residuals")
+covDiag(fm10)
+checkParms(fm10)
+checkConv(fm10)
+
+summary(fm10)
+predict(fm10, type = "state")
+sum(predict(fm10, type = "state")$Predicted)
+sum(predict(fm10, type = "state")$lower)
+sum(predict(fm10, type = "state")$upper)
+```
+
+### Model comparison
+
+```{r}
+modSel(fitList("fm1" = fm1, "fm2" = fm2, "fm3" = fm3, "fm4" = fm4, "fm5" = fm5, "fm6" = fm6, "fm7" = fm7, "fm8" = fm8, "fm9" = fm9, "fm10" = fm10))
+
+```
+
+### Parametric bootstrap of two best models
+
+```{r}
+# -------------------------
+# Balanced 5-visit data for GOF
+# -------------------------
+
+# keep only first 5 visits in the count matrix
+obs_matrix_fkt_5 <- obs_matrix_fkt[, 1:5]
+
+# rebuild obsCovs so it matches 19 sites x 5 visits = 95 rows
+obscovs_fkt_5 <- sitecovs_fkt %>%
+  dplyr::select(fkt, Seclasse, index1, index2, pop_dens_s) %>%
+  slice(rep(row_number(), each = 5)) %>%
+  group_by(fkt) %>%
+  mutate(visit = row_number()) %>%
+  ungroup() %>%
+  arrange(fkt, visit)
+
+nrow(obscovs_fkt_5)
+nrow(obs_matrix_fkt_5) * ncol(obs_matrix_fkt_5)
+
+# build balanced UMF
+umf_fkt_5 <- unmarkedFramePCount(
+  y = obs_matrix_fkt_5,
+  siteCovs = sitecovs_fkt,
+  obsCovs = obscovs_fkt_5
+)
+
+summary(umf_fkt_5)
+
+fm7_5 <- pcount(
+  ~ 1 ~ length_s,
+  umf_fkt_5,
+  K = 400,
+  mixture = "NB")
+
+
+summary(fm7_5)
+predict(fm7_5, type = "state")
+sum(predict(fm7_5, type = "state")$Predicted)
+sum(predict(fm7_5, type = "state")$lower)
+sum(predict(fm7_5, type = "state")$upper)
+
+Nmix.gof.test(fm7_5, nsim = 50)
+
+```
+
+# Models using path as site
+
+### Preparation of obscovs slot
+
+```{r}
+obscovs_ambatomaro <- sitecovs_transect %>% 
+  filter(str_detect(Name, fixed("Ambatomaro"))) %>% 
+  dplyr::select(Name, Seclasse, index1, index2, pop_dens_s) %>%
+  slice(rep(row_number(), each = 9)) %>% group_by(Name) %>%
+  mutate(visit = row_number()) %>% ungroup()
+
+
+obscovs_other <- sitecovs_transect %>% 
+  filter(!str_detect(Name, fixed("Ambatomaro"))) %>%
+  dplyr::select(Name, Seclasse, index1, index2, pop_dens_s) %>% 
+  slice(rep(row_number(), each = 5)) %>% group_by(Name) %>%
+  mutate(visit = row_number()) %>% ungroup()
+
+names_other <- unique(sitecovs_transect$Name[!str_detect(sitecovs_transect$Name, fixed("Ambatomaro"))])
+
+obscovs_addNA <- data.frame( pop_dens_s = NA_real_, Seclasse = NA_character_, index1 = NA_real_, index2 = NA_real_, Name = rep(names_other, each = 4), visit = rep(6:9, times = length(names_other)), stringsAsFactors = FALSE )
+
+obscovs_transect <- bind_rows(obscovs_ambatomaro, obscovs_other, obscovs_addNA) %>% arrange(Name, visit)
+
+obscovs_transect
+```
+
+### Creation of UMF
+
+```{r}
+umf_transect <- unmarkedFramePCount(
+  y = obs_matrix_transect,
+  siteCovs = sitecovs_transect,
+  obsCovs = obscovs_transect
+)
+
+summary(umf_transect)
+```
+
+#### Model 1
+
+```{r}
+fmt1 <- pcount(
+  ~ 1 ~ length_s, 
+  umf_transect,
+  K = 60,
+  mixture = "NB")
+
+plot(fitted(fmt1), residuals(fmt1), main = "Residuals Plot for Model t1", xlab = "fitted", ylab = "residuals")
+covDiag(fmt1)
+checkParms(fmt1)
+checkConv(fmt1)
+
+prediction_fmt1 <- predict(fmt1, type = "state")
+print(prediction_fmt1)
+sum(predict(fmt1, type = "state")$Predicted)
+sum(predict(fmt1, type = "state")$lower)
+sum(predict(fmt1, type = "state")$upper)
+predict(fmt1, type = "det")
+```
+
+#### Model 2
+
+```{r}
+fmt2 <- pcount(
+  ~ index1 ~ length_s + pop_dens_s, 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt2), residuals(fmt2), main = "Residuals Plot for Model t2", xlab = "fitted", ylab = "residuals")
+covDiag(fmt2)
+checkParms(fmt2)
+checkConv(fmt2)
+
+prediction_fmt2 <- predict(fmt2, type = "state")
+print(prediction_fmt2)
+sum(predict(fmt2, type = "state")$Predicted)
+sum(predict(fmt2, type = "state")$lower)
+sum(predict(fmt2, type = "state")$upper)
+```
+
+#### Model 3
+
+```{r}
+fmt3 <- pcount(
+  ~ index1 + index2 ~ length_s + pop_dens_s, 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt3), residuals(fmt3), main = "Residuals Plot for Model t3", xlab = "fitted", ylab = "residuals")
+covDiag(fmt3)
+checkParms(fmt3)
+checkConv(fmt3)
+
+prediction_fmt3 <- predict(fmt3, type = "state")
+print(prediction_fmt3)
+sum(predict(fmt3, type = "state")$Predicted)
+sum(predict(fmt3, type = "state")$lower)
+sum(predict(fmt3, type = "state")$upper)
+```
+
+#### Model 4
+
+```{r}
+fmt4 <- pcount(
+  ~ index1 + index2 ~ length_s + pop_dens_s + (1|Seclasse), 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt4), residuals(fmt4), main = "Residuals Plot for Model t4", xlab = "fitted", ylab = "residuals")
+covDiag(fmt4)
+checkParms(fmt4)
+checkConv(fmt4)
+
+prediction_fmt4 <- predict(fmt4, type = "state")
+print(prediction_fmt4)
+sum(predict(fmt4, type = "state")$Predicted)
+sum(predict(fmt4, type = "state")$lower)
+sum(predict(fmt4, type = "state")$upper)
+```
+
+#### Model 5
+
+```{r}
+fmt5 <- pcount(
+  ~ index1 + index2 ~ length_s + pop_dens_s + pcc_s + (1|Seclasse), 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt5), residuals(fmt5), main = "Residuals Plot for Model t5", xlab = "fitted", ylab = "residuals")
+covDiag(fmt5)
+checkParms(fmt5)
+checkConv(fmt5)
+
+prediction_fmt5 <- predict(fmt5, type = "state")
+print(prediction_fmt5)
+sum(predict(fmt5, type = "state")$Predicted)
+sum(predict(fmt5, type = "state")$lower)
+sum(predict(fmt5, type = "state")$upper)
+```
+
+#### Model 6
+
+```{r}
+fmt6 <- pcount(
+  ~ 1 ~ length_s + index1, 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt6), residuals(fmt6), main = "Residuals Plot for Model t6", xlab = "fitted", ylab = "residuals")
+covDiag(fmt6)
+checkParms(fmt6)
+checkConv(fmt6)
+
+prediction_fmt6 <- predict(fmt6, type = "state")
+print(prediction_fmt6)
+sum(predict(fmt6, type = "state")$Predicted)
+sum(predict(fmt6, type = "state")$lower)
+sum(predict(fmt6, type = "state")$upper)
+```
+
+#### Model 7
+
+```{r}
+fmt7 <- pcount(
+  ~ index1 + index2 ~ length_s + pop_dens_s + pcc_s + (1|fkt), 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt7), residuals(fmt7), main = "Residuals Plot for Model t7", xlab = "fitted", ylab = "residuals")
+covDiag(fmt7)
+checkParms(fmt7)
+checkConv(fmt7)
+summary(fmt7)
+
+prediction_fmt7 <- predict(fmt7, type = "state")
+print(prediction_fmt7)
+sum(predict(fmt7, type = "state")$Predicted)
+sum(predict(fmt7, type = "state")$lower)
+sum(predict(fmt7, type = "state")$upper)
+
+sum(predict(fmt7, type = "det")$Predicted)
+sum(predict(fmt7, type = "det")$lower)
+sum(predict(fmt7, type = "det")$upper)
+```
+
+#### Model 8
+
+```{r}
+fmt8 <- pcount(
+  ~ index1 ~ length_s + index1, 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt8), residuals(fmt8), main = "Residuals Plot for Model t8", xlab = "fitted", ylab = "residuals")
+covDiag(fmt8)
+checkParms(fmt8)
+checkConv(fmt8)
+
+prediction_fmt8 <- predict(fmt8, type = "state")
+print(prediction_fmt8)
+sum(predict(fmt8, type = "state")$Predicted)
+sum(predict(fmt8, type = "state")$lower)
+sum(predict(fmt8, type = "state")$upper)
+```
+
+#### Model 9
+
+```{r}
+fmt9 <- pcount(
+  ~ index1 ~ length_s + index1 + pop_dens_s, 
+  umf_transect,
+  K = 60,
+  mixture = "NB",
+  engine = "TMB")
+
+plot(fitted(fmt9), residuals(fmt9), main = "Residuals Plot for Model t9", xlab = "fitted", ylab = "residuals")
+covDiag(fmt9)
+checkParms(fmt9)
+checkConv(fmt9)
+
+prediction_fmt9 <- predict(fmt9, type = "state")
+print(prediction_fmt9)
+sum(predict(fmt9, type = "state")$Predicted)
+sum(predict(fmt9, type = "state")$lower)
+sum(predict(fmt9, type = "state")$upper)
+```
+
+### Model comparison
+
+```{r}
+modSel(fitList("fmt1" = fmt1, "fmt2" = fmt2, "fmt3" = fmt3, "fmt4" = fmt4, "fmt5" = fmt5, "fmt6" = fmt6, "fmt7" = fmt7, "fmt8" = fmt8, "fmt9" = fmt9))
+```
+
+```{r}
+Nmix.gof.test(fmt1, nsim = 50)
+```
